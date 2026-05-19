@@ -379,15 +379,27 @@ function Play() {
             )}
 
             {session.phase === "phase3_candidates" && (
-              <Phase3Candidates
-                candidates={candidates}
-                round={session.current_round}
-                index={session.current_candidate_index}
-                isHost={isHost}
-                canAdvance={canAdvance}
-                onNext={nextCandidate}
-                onPrev={prevCandidate}
-              />
+              <>
+                <Phase3Candidates
+                  candidates={candidates}
+                  round={session.current_round}
+                  index={session.current_candidate_index}
+                  isHost={isHost}
+                  canAdvance={canAdvance}
+                  onNext={nextCandidate}
+                  onPrev={prevCandidate}
+                />
+                {myPlayerId && (
+                  <ChatPanel
+                    sessionId={session.id}
+                    myPlayerId={myPlayerId}
+                    myName={myName}
+                    phase={session.phase}
+                    round={session.current_round}
+                    title="Live-Chat zur Diskussion"
+                  />
+                )}
+              </>
             )}
 
             {session.phase === "phase4_hire_vote" && (
