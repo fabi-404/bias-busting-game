@@ -702,6 +702,15 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
         {roundVotes.length} / {players.length} abgestimmt
       </div>
 
+      <ChatPanel
+        sessionId={sessionId}
+        myPlayerId={myPlayerId}
+        myName={myName}
+        phase="phase4_hire_vote"
+        round={round}
+        title="Diskussion · Wer wird eingestellt?"
+      />
+
       {isHost && (
         <div className="flex justify-center">
           <Button size="lg" onClick={onNext} disabled={!allVoted} className="h-12">
