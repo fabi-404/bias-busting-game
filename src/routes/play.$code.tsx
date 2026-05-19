@@ -801,10 +801,10 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
 }
 
 // ===== Phase 5: Bias Guess =====
-function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, round, isHost, onSubmit, onNext, isLastRound, sessionId, myName }: {
+function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, round, isHost, canAdvance, onSubmit, onNext, isLastRound, sessionId, myName }: {
   biases: BiasRow[]; players: PlayerRow[]; assignments: AssignmentRow[];
   guesses: BiasGuessRow[]; myPlayerId: string | null; round: number;
-  isHost: boolean; onSubmit: (picks: Record<string, string>) => void;
+  isHost: boolean; canAdvance: boolean; onSubmit: (picks: Record<string, string>) => void;
   onNext: () => void; isLastRound: boolean;
   sessionId: string; myName: string;
 }) {
