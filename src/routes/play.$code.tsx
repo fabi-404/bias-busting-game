@@ -909,17 +909,22 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
       )}
 
       {isHost && (
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
           <Button
             size="lg"
             onClick={onNext}
-            disabled={!allPlayersSubmitted}
-            variant={allPlayersSubmitted ? "default" : "secondary"}
+            disabled={!allPlayersSubmitted || !canAdvance}
+            variant={allPlayersSubmitted && canAdvance ? "default" : "secondary"}
             className="h-12"
           >
             {isLastRound ? "Endauswertung anzeigen" : "Nächste Runde"}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
+          {(!allPlayersSubmitted || !canAdvance) && (
+            <p className="text-xs text-muted-foreground">
+              {!allPlayersSubmitted ? "Warte bis alle Tipps abgegeben wurden." : "Warte bis alle bereit sind oder der Timer abläuft."}
+            </p>
+          )}
         </div>
       )}
     </div>
