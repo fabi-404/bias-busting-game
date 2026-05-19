@@ -711,9 +711,9 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
 }
 
 // ===== Phase 4: Hire Vote =====
-function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, onVote, onNext, sessionId, myName }: {
+function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, canAdvance, onVote, onNext, sessionId, myName }: {
   candidates: CandidateRow[]; round: number; votes: CandidateVoteRow[];
-  players: PlayerRow[]; myPlayerId: string | null; isHost: boolean;
+  players: PlayerRow[]; myPlayerId: string | null; isHost: boolean; canAdvance: boolean;
   onVote: (candidateId: string) => void; onNext: () => void;
   sessionId: string; myName: string;
 }) {
