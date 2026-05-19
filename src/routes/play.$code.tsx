@@ -665,9 +665,9 @@ function CandidateCard({ c }: { c: CandidateRow }) {
   );
 }
 
-function Phase3Candidates({ candidates, round, index, isHost, onNext, onPrev }: {
+function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext, onPrev }: {
   candidates: CandidateRow[]; round: number; index: number;
-  isHost: boolean; onNext: () => void; onPrev: () => void;
+  isHost: boolean; canAdvance: boolean; onNext: () => void; onPrev: () => void;
 }) {
   const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
   const c = roundCandidates[index];
@@ -689,16 +689,21 @@ function Phase3Candidates({ candidates, round, index, isHost, onNext, onPrev }: 
         </div>
       </Card>
       {isHost && (
-        <div className="flex justify-center gap-3">
-          {index > 0 && (
-            <Button size="lg" variant="outline" onClick={onPrev} className="h-12">
-              <ChevronLeft className="h-4 w-4 mr-1" /> Zurück
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex justify-center gap-3">
+            {index > 0 && (
+              <Button size="lg" variant="outline" onClick={onPrev} className="h-12">
+                <ChevronLeft className="h-4 w-4 mr-1" /> Zurück
+              </Button>
+            )}
+            <Button size="lg" onClick={onNext} disabled={!canAdvance} className="h-12">
+              {index + 1 >= roundCandidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
+          </div>
+          {!canAdvance && (
+            <p className="text-xs text-muted-foreground">Warte bis alle bereit sind oder der Timer abläuft.</p>
           )}
-          <Button size="lg" onClick={onNext} className="h-12">
-            {index + 1 >= roundCandidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
         </div>
       )}
     </div>
