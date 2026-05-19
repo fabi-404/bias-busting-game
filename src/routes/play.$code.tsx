@@ -562,10 +562,10 @@ function Phase1Knowledge({ myBias, isHost, playersReady, assignmentsCount, canAd
 }
 
 // ===== Phase 2: Questions =====
-function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHost, players, onAnswer, onNext }: {
+function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHost, players, canAdvance, onAnswer, onNext }: {
   myBias: BiasRow | null; myPlayerId: string | null;
   questions: BiasQuestionRow[]; answers: QuestionAnswerRow[]; qIndex: number;
-  isHost: boolean; players: PlayerRow[];
+  isHost: boolean; players: PlayerRow[]; canAdvance: boolean;
   onAnswer: (questionId: string, answer: boolean) => void;
   onNext: () => void;
 }) {
