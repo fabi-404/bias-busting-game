@@ -18,6 +18,9 @@ import {
   TOTAL_ROUNDS, phaseLabel,
 } from "@/lib/bias-game";
 import { ChatPanel } from "@/components/ChatPanel";
+import { PhaseStatusBar, PHASE_DURATION_SECONDS } from "@/components/PhaseStatusBar";
+
+type ReadyRow = { player_id: string; phase_key: string };
 
 export const Route = createFileRoute("/play/$code")({
   head: () => ({ meta: [{ title: "Spielraum – Recruiting BIAS" }] }),
@@ -38,7 +41,14 @@ function Play() {
   const [answers, setAnswers] = useState<QuestionAnswerRow[]>([]);
   const [votes, setVotes] = useState<CandidateVoteRow[]>([]);
   const [guesses, setGuesses] = useState<BiasGuessRow[]>([]);
+  const [readyRows, setReadyRows] = useState<ReadyRow[]>([]);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const isHost = !!identity && identity.kind === "host" && session?.host_token === identity.token;
   const myPlayerId = identity?.playerId ?? null;
@@ -66,7 +76,7 @@ function Play() {
     }
     setSession(sess as SessionRow);
 
-    const [b, q, c, p, a, ans, v, g] = await Promise.all([
+    const [b, q, c, p, a, ans, v, g, r] = await Promise.all([
       supabase.from("biases").select("*").order("name"),
       supabase.from("bias_questions").select("*").order("position"),
       supabase.from("candidates").select("*").order("round_number, position"),
@@ -75,6 +85,7 @@ function Play() {
       supabase.from("bias_question_answers").select("*").eq("session_id", sess.id),
       supabase.from("candidate_votes").select("*").eq("session_id", sess.id),
       supabase.from("bias_guesses").select("*").eq("session_id", sess.id),
+      supabase.from("session_phase_ready").select("player_id, phase_key").eq("session_id", sess.id),
     ]);
     setBiases((b.data ?? []) as BiasRow[]);
     setQuestions((q.data ?? []) as BiasQuestionRow[]);
@@ -84,6 +95,7 @@ function Play() {
     setAnswers((ans.data ?? []) as QuestionAnswerRow[]);
     setVotes((v.data ?? []) as CandidateVoteRow[]);
     setGuesses((g.data ?? []) as BiasGuessRow[]);
+    setReadyRows((r.data ?? []) as ReadyRow[]);
     setLoading(false);
   }, [code, navigate]);
 
@@ -123,6 +135,9 @@ function Play() {
       .on("postgres_changes", { event: "*", schema: "public", table: "bias_guesses", filter: `session_id=eq.${session.id}` },
         () => supabase.from("bias_guesses").select("*").eq("session_id", session.id)
           .then(({ data }) => setGuesses((data ?? []) as BiasGuessRow[])))
+      .on("postgres_changes", { event: "*", schema: "public", table: "session_phase_ready", filter: `session_id=eq.${session.id}` },
+        () => supabase.from("session_phase_ready").select("player_id, phase_key").eq("session_id", session.id)
+          .then(({ data }) => setReadyRows((data ?? []) as ReadyRow[])))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [session?.id]);
@@ -277,6 +292,27 @@ function Play() {
     return <div className="min-h-screen grid place-items-center text-muted-foreground">Lädt…</div>;
   }
 
+  // ===== Phase ready / timer =====
+  const phaseKey = `${session.phase}:${session.current_round}:${session.current_question_index}:${session.current_candidate_index}`;
+  const readyForStep = readyRows.filter((r) => r.phase_key === phaseKey);
+  const readyCount = readyForStep.length;
+  const iAmReady = !!(myPlayerId && readyForStep.find((r) => r.player_id === myPlayerId));
+  const showStatusBar = session.phase !== "lobby" && session.phase !== "final_results";
+
+  const startMs = session.phase_started_at ? new Date(session.phase_started_at).getTime() : Date.now();
+  const elapsed = Math.max(0, Math.floor((nowTick - startMs) / 1000));
+  const timerExpired = elapsed >= PHASE_DURATION_SECONDS;
+  const allReady = players.length > 0 && readyCount >= players.length;
+  const canAdvance = allReady || timerExpired;
+
+  async function markReady() {
+    if (!session || !myPlayerId) return;
+    await supabase.from("session_phase_ready").upsert(
+      { session_id: session.id, player_id: myPlayerId, phase_key: phaseKey },
+      { onConflict: "session_id,player_id,phase_key" },
+    );
+  }
+
   return (
     <main className="min-h-screen px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
@@ -302,6 +338,17 @@ function Play() {
               {phaseLabel(session.phase)}
             </div>
 
+            {showStatusBar && (
+              <PhaseStatusBar
+                phaseStartedAt={session.phase_started_at}
+                iAmReady={iAmReady}
+                readyCount={readyCount}
+                totalPlayers={players.length}
+                onReady={markReady}
+                canMarkReady={!!myPlayerId}
+              />
+            )}
+
             {session.phase === "lobby" && (
               <LobbyView code={code} isHost={isHost} players={players} onStart={startGame} />
             )}
@@ -312,6 +359,7 @@ function Play() {
                 isHost={isHost}
                 playersReady={players.length}
                 assignmentsCount={assignments.length}
+                canAdvance={canAdvance}
                 onNext={() => setPhase("phase2_questions", { current_question_index: 0 })}
               />
             )}
@@ -325,6 +373,7 @@ function Play() {
                 qIndex={session.current_question_index}
                 isHost={isHost}
                 players={players}
+                canAdvance={canAdvance}
                 onAnswer={submitAnswer}
                 onNext={nextQuestion}
               />
@@ -336,6 +385,7 @@ function Play() {
                 round={session.current_round}
                 index={session.current_candidate_index}
                 isHost={isHost}
+                canAdvance={canAdvance}
                 onNext={nextCandidate}
                 onPrev={prevCandidate}
               />
@@ -349,6 +399,7 @@ function Play() {
                 players={players}
                 myPlayerId={myPlayerId}
                 isHost={isHost}
+                canAdvance={canAdvance}
                 onVote={submitCandidateVote}
                 onNext={() => setPhase("phase5_bias_guess")}
                 sessionId={session.id}
@@ -365,6 +416,7 @@ function Play() {
                 myPlayerId={myPlayerId}
                 round={session.current_round}
                 isHost={isHost}
+                canAdvance={canAdvance}
                 onSubmit={submitBiasGuesses}
                 onNext={nextRound}
                 isLastRound={session.current_round >= TOTAL_ROUNDS}
@@ -457,8 +509,8 @@ function LobbyView({ code, isHost, players, onStart }: {
 }
 
 // ===== Phase 1: Knowledge =====
-function Phase1Knowledge({ myBias, isHost, playersReady, assignmentsCount, onNext }: {
-  myBias: BiasRow | null; isHost: boolean; playersReady: number; assignmentsCount: number; onNext: () => void;
+function Phase1Knowledge({ myBias, isHost, playersReady, assignmentsCount, canAdvance, onNext }: {
+  myBias: BiasRow | null; isHost: boolean; playersReady: number; assignmentsCount: number; canAdvance: boolean; onNext: () => void;
 }) {
   if (!myBias) {
     return <Card className="rounded-3xl p-10 text-center text-muted-foreground">Bias wird zugewiesen…</Card>;
@@ -491,10 +543,13 @@ function Phase1Knowledge({ myBias, isHost, playersReady, assignmentsCount, onNex
         </div>
       </Card>
       {isHost && (
-        <div className="flex justify-center">
-          <Button size="lg" onClick={onNext} className="h-12">
+        <div className="flex flex-col items-center gap-2">
+          <Button size="lg" onClick={onNext} disabled={!canAdvance} className="h-12">
             Weiter zu den Fragen <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
+          {!canAdvance && (
+            <p className="text-xs text-muted-foreground">Warte bis alle bereit sind oder der Timer abläuft.</p>
+          )}
         </div>
       )}
       {!isHost && (
@@ -507,10 +562,10 @@ function Phase1Knowledge({ myBias, isHost, playersReady, assignmentsCount, onNex
 }
 
 // ===== Phase 2: Questions =====
-function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHost, players, onAnswer, onNext }: {
+function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHost, players, canAdvance, onAnswer, onNext }: {
   myBias: BiasRow | null; myPlayerId: string | null;
   questions: BiasQuestionRow[]; answers: QuestionAnswerRow[]; qIndex: number;
-  isHost: boolean; players: PlayerRow[];
+  isHost: boolean; players: PlayerRow[]; canAdvance: boolean;
   onAnswer: (questionId: string, answer: boolean) => void;
   onNext: () => void;
 }) {
@@ -565,11 +620,14 @@ function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHos
         )}
       </Card>
       {isHost && (
-        <div className="flex justify-center">
-          <Button size="lg" onClick={onNext} className="h-12" variant={allDone ? "default" : "secondary"}>
+        <div className="flex flex-col items-center gap-2">
+          <Button size="lg" onClick={onNext} disabled={!canAdvance} className="h-12" variant={allDone && canAdvance ? "default" : "secondary"}>
             {qIndex + 1 >= 3 ? "Weiter zu den Bewerber:innen" : "Nächste Frage"}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
+          {!canAdvance && (
+            <p className="text-xs text-muted-foreground">Warte bis alle bereit sind oder der Timer abläuft.</p>
+          )}
         </div>
       )}
     </div>
@@ -607,9 +665,9 @@ function CandidateCard({ c }: { c: CandidateRow }) {
   );
 }
 
-function Phase3Candidates({ candidates, round, index, isHost, onNext, onPrev }: {
+function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext, onPrev }: {
   candidates: CandidateRow[]; round: number; index: number;
-  isHost: boolean; onNext: () => void; onPrev: () => void;
+  isHost: boolean; canAdvance: boolean; onNext: () => void; onPrev: () => void;
 }) {
   const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
   const c = roundCandidates[index];
@@ -631,16 +689,21 @@ function Phase3Candidates({ candidates, round, index, isHost, onNext, onPrev }: 
         </div>
       </Card>
       {isHost && (
-        <div className="flex justify-center gap-3">
-          {index > 0 && (
-            <Button size="lg" variant="outline" onClick={onPrev} className="h-12">
-              <ChevronLeft className="h-4 w-4 mr-1" /> Zurück
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex justify-center gap-3">
+            {index > 0 && (
+              <Button size="lg" variant="outline" onClick={onPrev} className="h-12">
+                <ChevronLeft className="h-4 w-4 mr-1" /> Zurück
+              </Button>
+            )}
+            <Button size="lg" onClick={onNext} disabled={!canAdvance} className="h-12">
+              {index + 1 >= roundCandidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
+          </div>
+          {!canAdvance && (
+            <p className="text-xs text-muted-foreground">Warte bis alle bereit sind oder der Timer abläuft.</p>
           )}
-          <Button size="lg" onClick={onNext} className="h-12">
-            {index + 1 >= roundCandidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
         </div>
       )}
     </div>
@@ -648,9 +711,9 @@ function Phase3Candidates({ candidates, round, index, isHost, onNext, onPrev }: 
 }
 
 // ===== Phase 4: Hire Vote =====
-function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, onVote, onNext, sessionId, myName }: {
+function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, canAdvance, onVote, onNext, sessionId, myName }: {
   candidates: CandidateRow[]; round: number; votes: CandidateVoteRow[];
-  players: PlayerRow[]; myPlayerId: string | null; isHost: boolean;
+  players: PlayerRow[]; myPlayerId: string | null; isHost: boolean; canAdvance: boolean;
   onVote: (candidateId: string) => void; onNext: () => void;
   sessionId: string; myName: string;
 }) {
@@ -722,10 +785,15 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
       />
 
       {isHost && (
-        <div className="flex justify-center">
-          <Button size="lg" onClick={onNext} disabled={!allVoted} className="h-12">
+        <div className="flex flex-col items-center gap-2">
+          <Button size="lg" onClick={onNext} disabled={!allVoted || !canAdvance} className="h-12">
             Weiter zu Phase 5 (Bias raten) <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
+          {(!allVoted || !canAdvance) && (
+            <p className="text-xs text-muted-foreground">
+              {!allVoted ? "Warte bis alle abgestimmt haben." : "Warte bis alle bereit sind oder der Timer abläuft."}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -733,10 +801,10 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
 }
 
 // ===== Phase 5: Bias Guess =====
-function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, round, isHost, onSubmit, onNext, isLastRound, sessionId, myName }: {
+function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, round, isHost, canAdvance, onSubmit, onNext, isLastRound, sessionId, myName }: {
   biases: BiasRow[]; players: PlayerRow[]; assignments: AssignmentRow[];
   guesses: BiasGuessRow[]; myPlayerId: string | null; round: number;
-  isHost: boolean; onSubmit: (picks: Record<string, string>) => void;
+  isHost: boolean; canAdvance: boolean; onSubmit: (picks: Record<string, string>) => void;
   onNext: () => void; isLastRound: boolean;
   sessionId: string; myName: string;
 }) {
@@ -841,17 +909,22 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
       )}
 
       {isHost && (
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
           <Button
             size="lg"
             onClick={onNext}
-            disabled={!allPlayersSubmitted}
-            variant={allPlayersSubmitted ? "default" : "secondary"}
+            disabled={!allPlayersSubmitted || !canAdvance}
+            variant={allPlayersSubmitted && canAdvance ? "default" : "secondary"}
             className="h-12"
           >
             {isLastRound ? "Endauswertung anzeigen" : "Nächste Runde"}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
+          {(!allPlayersSubmitted || !canAdvance) && (
+            <p className="text-xs text-muted-foreground">
+              {!allPlayersSubmitted ? "Warte bis alle Tipps abgegeben wurden." : "Warte bis alle bereit sind oder der Timer abläuft."}
+            </p>
+          )}
         </div>
       )}
     </div>

@@ -460,6 +460,30 @@ export type Database = {
           },
         ]
       }
+      session_phase_ready: {
+        Row: {
+          created_at: string
+          id: string
+          phase_key: string
+          player_id: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phase_key: string
+          player_id: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phase_key?: string
+          player_id?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
       session_players: {
         Row: {
           id: string
