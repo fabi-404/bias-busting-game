@@ -41,6 +41,7 @@ function Play() {
   const [answers, setAnswers] = useState<QuestionAnswerRow[]>([]);
   const [votes, setVotes] = useState<CandidateVoteRow[]>([]);
   const [guesses, setGuesses] = useState<BiasGuessRow[]>([]);
+  const [readyRows, setReadyRows] = useState<ReadyRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isHost = !!identity && identity.kind === "host" && session?.host_token === identity.token;
