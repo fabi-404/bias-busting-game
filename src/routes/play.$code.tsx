@@ -17,6 +17,7 @@ import {
   type CandidateVoteRow, type BiasGuessRow, type GamePhase,
   TOTAL_ROUNDS, phaseLabel,
 } from "@/lib/bias-game";
+import { ChatPanel } from "@/components/ChatPanel";
 
 export const Route = createFileRoute("/play/$code")({
   head: () => ({ meta: [{ title: "Spielraum – Recruiting BIAS" }] }),
