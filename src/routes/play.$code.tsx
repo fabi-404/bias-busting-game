@@ -509,8 +509,8 @@ function LobbyView({ code, isHost, players, onStart }: {
 }
 
 // ===== Phase 1: Knowledge =====
-function Phase1Knowledge({ myBias, isHost, playersReady, assignmentsCount, onNext }: {
-  myBias: BiasRow | null; isHost: boolean; playersReady: number; assignmentsCount: number; onNext: () => void;
+function Phase1Knowledge({ myBias, isHost, playersReady, assignmentsCount, canAdvance, onNext }: {
+  myBias: BiasRow | null; isHost: boolean; playersReady: number; assignmentsCount: number; canAdvance: boolean; onNext: () => void;
 }) {
   if (!myBias) {
     return <Card className="rounded-3xl p-10 text-center text-muted-foreground">Bias wird zugewiesen…</Card>;
