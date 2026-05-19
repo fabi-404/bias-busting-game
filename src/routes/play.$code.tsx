@@ -42,7 +42,13 @@ function Play() {
   const [votes, setVotes] = useState<CandidateVoteRow[]>([]);
   const [guesses, setGuesses] = useState<BiasGuessRow[]>([]);
   const [readyRows, setReadyRows] = useState<ReadyRow[]>([]);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const isHost = !!identity && identity.kind === "host" && session?.host_token === identity.token;
   const myPlayerId = identity?.playerId ?? null;
