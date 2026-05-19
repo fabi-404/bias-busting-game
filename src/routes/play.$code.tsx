@@ -70,7 +70,7 @@ function Play() {
     }
     setSession(sess as SessionRow);
 
-    const [b, q, c, p, a, ans, v, g] = await Promise.all([
+    const [b, q, c, p, a, ans, v, g, r] = await Promise.all([
       supabase.from("biases").select("*").order("name"),
       supabase.from("bias_questions").select("*").order("position"),
       supabase.from("candidates").select("*").order("round_number, position"),
@@ -79,6 +79,7 @@ function Play() {
       supabase.from("bias_question_answers").select("*").eq("session_id", sess.id),
       supabase.from("candidate_votes").select("*").eq("session_id", sess.id),
       supabase.from("bias_guesses").select("*").eq("session_id", sess.id),
+      supabase.from("session_phase_ready").select("player_id, phase_key").eq("session_id", sess.id),
     ]);
     setBiases((b.data ?? []) as BiasRow[]);
     setQuestions((q.data ?? []) as BiasQuestionRow[]);
@@ -88,6 +89,7 @@ function Play() {
     setAnswers((ans.data ?? []) as QuestionAnswerRow[]);
     setVotes((v.data ?? []) as CandidateVoteRow[]);
     setGuesses((g.data ?? []) as BiasGuessRow[]);
+    setReadyRows((r.data ?? []) as ReadyRow[]);
     setLoading(false);
   }, [code, navigate]);
 
