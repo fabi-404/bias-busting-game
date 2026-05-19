@@ -145,7 +145,6 @@ function Play() {
   // ===== Host actions =====
   async function startGame() {
     if (!session || !isHost) return;
-    if (players.length < 2) { toast.error("Mindestens 2 Spieler:innen nötig."); return; }
     if (biases.length === 0) { toast.error("Keine Bias-Typen vorhanden."); return; }
     // Randomly assign biases — each player gets one, cycling through bias pool
     const shuffledBiases = [...biases].sort(() => Math.random() - 0.5);
