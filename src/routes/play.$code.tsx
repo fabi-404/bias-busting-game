@@ -785,10 +785,15 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
       />
 
       {isHost && (
-        <div className="flex justify-center">
-          <Button size="lg" onClick={onNext} disabled={!allVoted} className="h-12">
+        <div className="flex flex-col items-center gap-2">
+          <Button size="lg" onClick={onNext} disabled={!allVoted || !canAdvance} className="h-12">
             Weiter zu Phase 5 (Bias raten) <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
+          {(!allVoted || !canAdvance) && (
+            <p className="text-xs text-muted-foreground">
+              {!allVoted ? "Warte bis alle abgestimmt haben." : "Warte bis alle bereit sind oder der Timer abläuft."}
+            </p>
+          )}
         </div>
       )}
     </div>
