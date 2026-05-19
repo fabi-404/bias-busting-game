@@ -511,20 +511,8 @@ function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHos
     return <Card className="rounded-3xl p-10 text-center text-muted-foreground">Keine Fragen verfügbar.</Card>;
   }
   const myAnswer = answers.find((a) => a.player_id === myPlayerId && a.question_id === q.id);
-  const allAnswersForThisQuestion = answers.filter((a) =>
-    myQuestions.some((mq) => mq.id === a.question_id && mq.id === q.id)
-  );
-  // count distinct players who answered this question (across all biases)
-  const answeredThisRound = new Set(answers.filter((a) => {
-    // we display *one* card per player, but each player's q.id differs across biases.
-    // For host progress, count players whose current question (at index qIndex for their bias) is answered.
-    // Simpler: count players who have at least qIndex+1 answers total.
-    return false;
-  })).size;
-  void allAnswersForThisQuestion;
-  void answeredThisRound;
 
-  // progress: how many players have answered as many questions as required so far
+  // progress: how many players have answered up to (and including) the current question index
   const playerAnswerCounts = players.map((p) => answers.filter((a) => a.player_id === p.id).length);
   const playersDone = playerAnswerCounts.filter((c) => c > qIndex).length;
   const allDone = playersDone >= players.length;
