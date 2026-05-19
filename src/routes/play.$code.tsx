@@ -337,8 +337,7 @@ function Play() {
                 index={session.current_candidate_index}
                 isHost={isHost}
                 onNext={nextCandidate}
-                onPrev={() => session.current_candidate_index > 0 && isHost && supabase.from("game_sessions")
-                  .update({ current_candidate_index: session.current_candidate_index - 1 }).eq("id", session.id)}
+                onPrev={prevCandidate}
               />
             )}
 
