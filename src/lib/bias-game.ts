@@ -98,7 +98,7 @@ export interface BiasGuessRow {
   is_correct: boolean;
 }
 
-export const TOTAL_ROUNDS = 3;
+export const TOTAL_ROUNDS = 1;
 
 export function phaseLabel(phase: GamePhase): string {
   switch (phase) {
