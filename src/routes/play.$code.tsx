@@ -620,11 +620,14 @@ function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHos
         )}
       </Card>
       {isHost && (
-        <div className="flex justify-center">
-          <Button size="lg" onClick={onNext} className="h-12" variant={allDone ? "default" : "secondary"}>
+        <div className="flex flex-col items-center gap-2">
+          <Button size="lg" onClick={onNext} disabled={!canAdvance} className="h-12" variant={allDone && canAdvance ? "default" : "secondary"}>
             {qIndex + 1 >= 3 ? "Weiter zu den Bewerber:innen" : "Nächste Frage"}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
+          {!canAdvance && (
+            <p className="text-xs text-muted-foreground">Warte bis alle bereit sind oder der Timer abläuft.</p>
+          )}
         </div>
       )}
     </div>
