@@ -286,6 +286,27 @@ function Play() {
     return <div className="min-h-screen grid place-items-center text-muted-foreground">Lädt…</div>;
   }
 
+  // ===== Phase ready / timer =====
+  const phaseKey = `${session.phase}:${session.current_round}:${session.current_question_index}:${session.current_candidate_index}`;
+  const readyForStep = readyRows.filter((r) => r.phase_key === phaseKey);
+  const readyCount = readyForStep.length;
+  const iAmReady = !!(myPlayerId && readyForStep.find((r) => r.player_id === myPlayerId));
+  const showStatusBar = session.phase !== "lobby" && session.phase !== "final_results";
+
+  const startMs = session.phase_started_at ? new Date(session.phase_started_at).getTime() : Date.now();
+  const elapsed = Math.max(0, Math.floor((nowTick - startMs) / 1000));
+  const timerExpired = elapsed >= PHASE_DURATION_SECONDS;
+  const allReady = players.length > 0 && readyCount >= players.length;
+  const canAdvance = allReady || timerExpired;
+
+  async function markReady() {
+    if (!session || !myPlayerId) return;
+    await supabase.from("session_phase_ready").upsert(
+      { session_id: session.id, player_id: myPlayerId, phase_key: phaseKey },
+      { onConflict: "session_id,player_id,phase_key" },
+    );
+  }
+
   return (
     <main className="min-h-screen px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
