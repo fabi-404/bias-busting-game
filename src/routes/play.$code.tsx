@@ -18,6 +18,9 @@ import {
   TOTAL_ROUNDS, phaseLabel,
 } from "@/lib/bias-game";
 import { ChatPanel } from "@/components/ChatPanel";
+import { PhaseStatusBar, PHASE_DURATION_SECONDS } from "@/components/PhaseStatusBar";
+
+type ReadyRow = { player_id: string; phase_key: string };
 
 export const Route = createFileRoute("/play/$code")({
   head: () => ({ meta: [{ title: "Spielraum – Recruiting BIAS" }] }),
