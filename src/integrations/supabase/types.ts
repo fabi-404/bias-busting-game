@@ -14,6 +14,244 @@ export type Database = {
   }
   public: {
     Tables: {
+      bias_guesses: {
+        Row: {
+          created_at: string
+          guessed_bias_id: string
+          guesser_player_id: string
+          id: string
+          is_correct: boolean
+          round_number: number
+          session_id: string
+          target_player_id: string
+        }
+        Insert: {
+          created_at?: string
+          guessed_bias_id: string
+          guesser_player_id: string
+          id?: string
+          is_correct?: boolean
+          round_number: number
+          session_id: string
+          target_player_id: string
+        }
+        Update: {
+          created_at?: string
+          guessed_bias_id?: string
+          guesser_player_id?: string
+          id?: string
+          is_correct?: boolean
+          round_number?: number
+          session_id?: string
+          target_player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bias_guesses_guessed_bias_id_fkey"
+            columns: ["guessed_bias_id"]
+            isOneToOne: false
+            referencedRelation: "biases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bias_question_answers: {
+        Row: {
+          answer: boolean
+          created_at: string
+          id: string
+          is_correct: boolean
+          player_id: string
+          question_id: string
+          session_id: string
+        }
+        Insert: {
+          answer: boolean
+          created_at?: string
+          id?: string
+          is_correct: boolean
+          player_id: string
+          question_id: string
+          session_id: string
+        }
+        Update: {
+          answer?: boolean
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          player_id?: string
+          question_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bias_question_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "bias_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bias_questions: {
+        Row: {
+          bias_id: string
+          correct_answer: boolean
+          created_at: string
+          explanation: string
+          id: string
+          position: number
+          question: string
+        }
+        Insert: {
+          bias_id: string
+          correct_answer: boolean
+          created_at?: string
+          explanation: string
+          id?: string
+          position?: number
+          question: string
+        }
+        Update: {
+          bias_id?: string
+          correct_answer?: boolean
+          created_at?: string
+          explanation?: string
+          id?: string
+          position?: number
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bias_questions_bias_id_fkey"
+            columns: ["bias_id"]
+            isOneToOne: false
+            referencedRelation: "biases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      biases: {
+        Row: {
+          color: string
+          created_at: string
+          example: string | null
+          id: string
+          knowledge_card_text: string
+          name: string
+          short_description: string
+          slug: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          example?: string | null
+          id?: string
+          knowledge_card_text: string
+          name: string
+          short_description: string
+          slug: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          example?: string | null
+          id?: string
+          knowledge_card_text?: string
+          name?: string
+          short_description?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      candidate_votes: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          id: string
+          player_id: string
+          round_number: number
+          session_id: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          id?: string
+          player_id: string
+          round_number: number
+          session_id: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          round_number?: number
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_votes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidates: {
+        Row: {
+          age: number | null
+          appeals_to_bias_id: string | null
+          created_at: string
+          description: string
+          headline: string
+          id: string
+          image_url: string | null
+          name: string
+          position: number
+          pronouns: string | null
+          qualifications: string
+          round_number: number
+        }
+        Insert: {
+          age?: number | null
+          appeals_to_bias_id?: string | null
+          created_at?: string
+          description: string
+          headline: string
+          id?: string
+          image_url?: string | null
+          name: string
+          position?: number
+          pronouns?: string | null
+          qualifications: string
+          round_number: number
+        }
+        Update: {
+          age?: number | null
+          appeals_to_bias_id?: string | null
+          created_at?: string
+          description?: string
+          headline?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          position?: number
+          pronouns?: string | null
+          qualifications?: string
+          round_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidates_appeals_to_bias_id_fkey"
+            columns: ["appeals_to_bias_id"]
+            isOneToOne: false
+            referencedRelation: "biases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cards: {
         Row: {
           category: string | null
@@ -57,10 +295,15 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          current_candidate_index: number
           current_card_id: string | null
+          current_question_index: number
+          current_round: number
           host_name: string
           host_token: string
           id: string
+          phase: Database["public"]["Enums"]["game_phase"]
+          phase_started_at: string | null
           revealed: boolean
           round_number: number
           status: Database["public"]["Enums"]["session_status"]
@@ -70,10 +313,15 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          current_candidate_index?: number
           current_card_id?: string | null
+          current_question_index?: number
+          current_round?: number
           host_name: string
           host_token?: string
           id?: string
+          phase?: Database["public"]["Enums"]["game_phase"]
+          phase_started_at?: string | null
           revealed?: boolean
           round_number?: number
           status?: Database["public"]["Enums"]["session_status"]
@@ -83,10 +331,15 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          current_candidate_index?: number
           current_card_id?: string | null
+          current_question_index?: number
+          current_round?: number
           host_name?: string
           host_token?: string
           id?: string
+          phase?: Database["public"]["Enums"]["game_phase"]
+          phase_started_at?: string | null
           revealed?: boolean
           round_number?: number
           status?: Database["public"]["Enums"]["session_status"]
@@ -99,6 +352,38 @@ export type Database = {
             columns: ["current_card_id"]
             isOneToOne: false
             referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_bias_assignments: {
+        Row: {
+          bias_id: string
+          created_at: string
+          id: string
+          player_id: string
+          session_id: string
+        }
+        Insert: {
+          bias_id: string
+          created_at?: string
+          id?: string
+          player_id: string
+          session_id: string
+        }
+        Update: {
+          bias_id?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_bias_assignments_bias_id_fkey"
+            columns: ["bias_id"]
+            isOneToOne: false
+            referencedRelation: "biases"
             referencedColumns: ["id"]
           },
         ]
@@ -241,6 +526,15 @@ export type Database = {
     }
     Enums: {
       card_type: "knowledge" | "truefalse" | "action"
+      game_phase:
+        | "lobby"
+        | "phase1_knowledge"
+        | "phase2_questions"
+        | "phase3_candidates"
+        | "phase4_hire_vote"
+        | "phase5_bias_guess"
+        | "round_results"
+        | "final_results"
       session_status: "lobby" | "playing" | "ended"
     }
     CompositeTypes: {
@@ -370,6 +664,16 @@ export const Constants = {
   public: {
     Enums: {
       card_type: ["knowledge", "truefalse", "action"],
+      game_phase: [
+        "lobby",
+        "phase1_knowledge",
+        "phase2_questions",
+        "phase3_candidates",
+        "phase4_hire_vote",
+        "phase5_bias_guess",
+        "round_results",
+        "final_results",
+      ],
       session_status: ["lobby", "playing", "ended"],
     },
   },

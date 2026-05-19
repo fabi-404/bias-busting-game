@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
 function Home() {
   const navigate = useNavigate();
   const [hostName, setHostName] = useState("");
-  const [totalRounds, setTotalRounds] = useState(10);
+  const totalRounds = 3;
   const [loading, setLoading] = useState(false);
 
   async function createSession() {
@@ -95,15 +95,14 @@ function Home() {
             </span>
           </h1>
           <p className="mt-6 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto">
-            Wissens-, Wahr-oder-Falsch- und Aktionskarten – zusammen ziehen, abstimmen, reflektieren.
-            Erstelle einen Spielraum oder tritt einem Spiel bei.
+            5 Phasen · 3 Runden · ideal für 4 Spieler:innen. Jede:r erhält geheim einen Bias und entscheidet beeinflusst über drei Bewerber:innen.
           </p>
         </header>
 
         <Card className="p-6 sm:p-8 rounded-3xl border-border/60 shadow-xl shadow-black/5">
           <h2 className="font-display text-2xl mb-4">Spielraum erstellen</h2>
           <p className="text-sm text-muted-foreground mb-5">
-            Du bist Host. Du ziehst die Karten und löst sie auf.
+            Du bist Host. Du steuerst die Phasen — die anderen treten mit dem Code bei.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Input
@@ -123,22 +122,8 @@ function Home() {
               {loading ? "…" : "Raum öffnen"}
             </Button>
           </div>
-          <div className="mt-4 flex items-center gap-3">
-            <label htmlFor="rounds" className="text-sm text-muted-foreground whitespace-nowrap">
-              Runden gesamt
-            </label>
-            <Input
-              id="rounds"
-              type="number"
-              min={1}
-              max={50}
-              value={totalRounds}
-              onChange={(e) => setTotalRounds(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
-              className="h-10 w-24 text-base"
-            />
-            <span className="text-xs text-muted-foreground">Karten werden gezogen, danach gewinnt die höchste Punktzahl.</span>
-          </div>
         </Card>
+
 
         <div className="mt-6 grid sm:grid-cols-2 gap-4">
           <Link
