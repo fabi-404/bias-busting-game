@@ -543,10 +543,13 @@ function Phase1Knowledge({ myBias, isHost, playersReady, assignmentsCount, canAd
         </div>
       </Card>
       {isHost && (
-        <div className="flex justify-center">
-          <Button size="lg" onClick={onNext} className="h-12">
+        <div className="flex flex-col items-center gap-2">
+          <Button size="lg" onClick={onNext} disabled={!canAdvance} className="h-12">
             Weiter zu den Fragen <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
+          {!canAdvance && (
+            <p className="text-xs text-muted-foreground">Warte bis alle bereit sind oder der Timer abläuft.</p>
+          )}
         </div>
       )}
       {!isHost && (
