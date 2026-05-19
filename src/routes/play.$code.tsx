@@ -17,6 +17,7 @@ import {
   type CandidateVoteRow, type BiasGuessRow, type GamePhase,
   TOTAL_ROUNDS, phaseLabel,
 } from "@/lib/bias-game";
+import { ChatPanel } from "@/components/ChatPanel";
 
 export const Route = createFileRoute("/play/$code")({
   head: () => ({ meta: [{ title: "Spielraum – Recruiting BIAS" }] }),
@@ -342,6 +343,8 @@ function Play() {
                 isHost={isHost}
                 onVote={submitCandidateVote}
                 onNext={() => setPhase("phase5_bias_guess")}
+                sessionId={session.id}
+                myName={identity?.name ?? ""}
               />
             )}
 
@@ -357,6 +360,8 @@ function Play() {
                 onSubmit={submitBiasGuesses}
                 onNext={nextRound}
                 isLastRound={session.current_round >= TOTAL_ROUNDS}
+                sessionId={session.id}
+                myName={identity?.name ?? ""}
               />
             )}
 
@@ -633,10 +638,11 @@ function Phase3Candidates({ candidates, round, index, isHost, onNext, onPrev }: 
 }
 
 // ===== Phase 4: Hire Vote =====
-function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, onVote, onNext }: {
+function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, onVote, onNext, sessionId, myName }: {
   candidates: CandidateRow[]; round: number; votes: CandidateVoteRow[];
   players: PlayerRow[]; myPlayerId: string | null; isHost: boolean;
   onVote: (candidateId: string) => void; onNext: () => void;
+  sessionId: string; myName: string;
 }) {
   const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
   const roundVotes = votes.filter((v) => v.round_number === round);
@@ -696,6 +702,15 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
         {roundVotes.length} / {players.length} abgestimmt
       </div>
 
+      <ChatPanel
+        sessionId={sessionId}
+        myPlayerId={myPlayerId}
+        myName={myName}
+        phase="phase4_hire_vote"
+        round={round}
+        title="Diskussion · Wer wird eingestellt?"
+      />
+
       {isHost && (
         <div className="flex justify-center">
           <Button size="lg" onClick={onNext} disabled={!allVoted} className="h-12">
@@ -708,11 +723,12 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
 }
 
 // ===== Phase 5: Bias Guess =====
-function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, round, isHost, onSubmit, onNext, isLastRound }: {
+function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, round, isHost, onSubmit, onNext, isLastRound, sessionId, myName }: {
   biases: BiasRow[]; players: PlayerRow[]; assignments: AssignmentRow[];
   guesses: BiasGuessRow[]; myPlayerId: string | null; round: number;
   isHost: boolean; onSubmit: (picks: Record<string, string>) => void;
   onNext: () => void; isLastRound: boolean;
+  sessionId: string; myName: string;
 }) {
   const others = players.filter((p) => p.id !== myPlayerId);
   const myGuesses = guesses.filter((g) => g.guesser_player_id === myPlayerId && g.round_number === round);
@@ -790,6 +806,16 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
           );
         })}
       </div>
+
+      <ChatPanel
+        sessionId={sessionId}
+        myPlayerId={myPlayerId}
+        myName={myName}
+        phase="phase5_bias_guess"
+        round={round}
+        title="Diskussion · Bias raten"
+      />
+
 
       {!alreadySubmitted && (
         <div className="flex justify-center">
