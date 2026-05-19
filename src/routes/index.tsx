@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
 function Home() {
   const navigate = useNavigate();
   const [hostName, setHostName] = useState("");
-  const [totalRounds, setTotalRounds] = useState(10);
+  const totalRounds = 3;
   const [loading, setLoading] = useState(false);
 
   async function createSession() {
