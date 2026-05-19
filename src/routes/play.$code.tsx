@@ -343,6 +343,8 @@ function Play() {
                 isHost={isHost}
                 onVote={submitCandidateVote}
                 onNext={() => setPhase("phase5_bias_guess")}
+                sessionId={session.id}
+                myName={identity?.name ?? ""}
               />
             )}
 
@@ -358,6 +360,8 @@ function Play() {
                 onSubmit={submitBiasGuesses}
                 onNext={nextRound}
                 isLastRound={session.current_round >= TOTAL_ROUNDS}
+                sessionId={session.id}
+                myName={identity?.name ?? ""}
               />
             )}
 
