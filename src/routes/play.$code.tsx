@@ -638,10 +638,11 @@ function Phase3Candidates({ candidates, round, index, isHost, onNext, onPrev }: 
 }
 
 // ===== Phase 4: Hire Vote =====
-function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, onVote, onNext }: {
+function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, onVote, onNext, sessionId, myName }: {
   candidates: CandidateRow[]; round: number; votes: CandidateVoteRow[];
   players: PlayerRow[]; myPlayerId: string | null; isHost: boolean;
   onVote: (candidateId: string) => void; onNext: () => void;
+  sessionId: string; myName: string;
 }) {
   const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
   const roundVotes = votes.filter((v) => v.round_number === round);
