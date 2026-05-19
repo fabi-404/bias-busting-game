@@ -162,8 +162,6 @@ function Play() {
 
   async function nextQuestion() {
     if (!session || !isHost) return;
-    const myQuestions = questions; // host advances for all; each player sees their own
-    void myQuestions;
     const next = session.current_question_index + 1;
     if (next >= 3) {
       await setPhase("phase3_candidates", { current_candidate_index: 0 });
@@ -174,6 +172,7 @@ function Play() {
       }).eq("id", session.id);
     }
   }
+
 
   async function nextCandidate() {
     if (!session || !isHost) return;
