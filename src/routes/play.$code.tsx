@@ -338,6 +338,17 @@ function Play() {
               {phaseLabel(session.phase)}
             </div>
 
+            {showStatusBar && (
+              <PhaseStatusBar
+                phaseStartedAt={session.phase_started_at}
+                iAmReady={iAmReady}
+                readyCount={readyCount}
+                totalPlayers={players.length}
+                onReady={markReady}
+                canMarkReady={!!myPlayerId}
+              />
+            )}
+
             {session.phase === "lobby" && (
               <LobbyView code={code} isHost={isHost} players={players} onStart={startGame} />
             )}
@@ -348,6 +359,7 @@ function Play() {
                 isHost={isHost}
                 playersReady={players.length}
                 assignmentsCount={assignments.length}
+                canAdvance={canAdvance}
                 onNext={() => setPhase("phase2_questions", { current_question_index: 0 })}
               />
             )}
@@ -361,6 +373,7 @@ function Play() {
                 qIndex={session.current_question_index}
                 isHost={isHost}
                 players={players}
+                canAdvance={canAdvance}
                 onAnswer={submitAnswer}
                 onNext={nextQuestion}
               />
@@ -372,6 +385,7 @@ function Play() {
                 round={session.current_round}
                 index={session.current_candidate_index}
                 isHost={isHost}
+                canAdvance={canAdvance}
                 onNext={nextCandidate}
                 onPrev={prevCandidate}
               />
@@ -385,6 +399,7 @@ function Play() {
                 players={players}
                 myPlayerId={myPlayerId}
                 isHost={isHost}
+                canAdvance={canAdvance}
                 onVote={submitCandidateVote}
                 onNext={() => setPhase("phase5_bias_guess")}
                 sessionId={session.id}
@@ -401,6 +416,7 @@ function Play() {
                 myPlayerId={myPlayerId}
                 round={session.current_round}
                 isHost={isHost}
+                canAdvance={canAdvance}
                 onSubmit={submitBiasGuesses}
                 onNext={nextRound}
                 isLastRound={session.current_round >= TOTAL_ROUNDS}
