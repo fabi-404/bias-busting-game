@@ -807,6 +807,16 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
         })}
       </div>
 
+      <ChatPanel
+        sessionId={sessionId}
+        myPlayerId={myPlayerId}
+        myName={myName}
+        phase="phase5_bias_guess"
+        round={round}
+        title="Diskussion · Bias raten"
+      />
+
+
       {!alreadySubmitted && (
         <div className="flex justify-center">
           <Button
