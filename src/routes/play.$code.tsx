@@ -129,6 +129,9 @@ function Play() {
       .on("postgres_changes", { event: "*", schema: "public", table: "bias_guesses", filter: `session_id=eq.${session.id}` },
         () => supabase.from("bias_guesses").select("*").eq("session_id", session.id)
           .then(({ data }) => setGuesses((data ?? []) as BiasGuessRow[])))
+      .on("postgres_changes", { event: "*", schema: "public", table: "session_phase_ready", filter: `session_id=eq.${session.id}` },
+        () => supabase.from("session_phase_ready").select("player_id, phase_key").eq("session_id", session.id)
+          .then(({ data }) => setReadyRows((data ?? []) as ReadyRow[])))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [session?.id]);
