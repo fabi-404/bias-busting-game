@@ -393,7 +393,7 @@ function Play() {
                   <ChatPanel
                     sessionId={session.id}
                     myPlayerId={myPlayerId}
-                    myName={myName}
+                    myName={identity?.name ?? ""}
                     phase={session.phase}
                     round={session.current_round}
                     title="Live-Chat zur Diskussion"
