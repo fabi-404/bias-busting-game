@@ -535,7 +535,7 @@ function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHos
         <span>Frage {qIndex + 1} von 3 · zu deiner Bias</span>
         <span>{playersDone} / {players.length} fertig</span>
       </div>
-      <Card className="rounded-3xl p-8" style={{ borderColor: myBias.color, borderWidth: 2 }}>
+      <Card key={q.id} className="rounded-3xl p-8 animate-fade-in" style={{ borderColor: myBias.color, borderWidth: 2 }}>
         <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em]" style={{ color: myBias.color }}>
           <HelpCircle className="h-4 w-4" /> Wahr oder Falsch?
         </div>
@@ -552,7 +552,7 @@ function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHos
           </div>
         ) : (
           <div className={cn(
-            "mt-6 rounded-2xl p-5 border-2",
+            "mt-6 rounded-2xl p-5 border-2 animate-scale-in",
             myAnswer.is_correct ? "border-green-500 bg-green-500/10" : "border-red-500 bg-red-500/10",
           )}>
             <div className="flex items-center gap-2 font-display text-xl">
