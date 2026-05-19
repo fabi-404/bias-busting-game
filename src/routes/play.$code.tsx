@@ -188,6 +188,15 @@ function Play() {
     }
   }
 
+  async function prevCandidate() {
+    if (!session || !isHost) return;
+    if (session.current_candidate_index <= 0) return;
+    await supabase.from("game_sessions").update({
+      current_candidate_index: session.current_candidate_index - 1,
+      phase_started_at: new Date().toISOString(),
+    }).eq("id", session.id);
+  }
+
   async function nextRound() {
     if (!session || !isHost) return;
     if (session.current_round >= TOTAL_ROUNDS) {
