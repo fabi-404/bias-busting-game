@@ -619,7 +619,9 @@ function Phase3Candidates({ candidates, round, index, isHost, onNext, onPrev }: 
       <div className="text-xs text-muted-foreground">
         Bewerber:in {index + 1} von {roundCandidates.length}
       </div>
-      <CandidateCard c={c} />
+      <div key={c.id} className="animate-fade-in">
+        <CandidateCard c={c} />
+      </div>
       <Card className="rounded-2xl p-4 bg-muted/30">
         <div className="flex items-start gap-2">
           <Users className="h-4 w-4 mt-0.5 text-accent" />
