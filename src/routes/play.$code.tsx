@@ -104,7 +104,7 @@ function Play() {
     }
     setSession(sess as SessionRow);
 
-    const [b, q, c, p, a, ans, v, g, r, ac] = await Promise.all([
+    const [b, q, c, p, a, ans, v, g, r, ac, pv] = await Promise.all([
       supabase.from("biases").select("*").order("name"),
       supabase.from("bias_questions").select("*").order("position"),
       supabase.from("candidates").select("*").order("round_number, position"),
@@ -115,6 +115,7 @@ function Play() {
       supabase.from("bias_guesses").select("*").eq("session_id", sess.id),
       supabase.from("session_phase_ready").select("player_id, phase_key").eq("session_id", sess.id),
       supabase.from("cards").select("id, title, content, explanation, category").eq("type", "action"),
+      supabase.from("candidate_prevotes" as never).select("*").eq("session_id", sess.id),
     ]);
     setBiases((b.data ?? []) as BiasRow[]);
     setActionCards((ac.data ?? []) as ActionCardRow[]);
@@ -127,6 +128,7 @@ function Play() {
     setVotes((v.data ?? []) as CandidateVoteRow[]);
     setGuesses((g.data ?? []) as BiasGuessRow[]);
     setReadyRows((r.data ?? []) as ReadyRow[]);
+    setPrevotes(((pv.data ?? []) as unknown) as CandidatePrevoteRow[]);
     setLoading(false);
   }, [code, navigate]);
 
