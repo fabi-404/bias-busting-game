@@ -1092,11 +1092,12 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
 }
 
 // ===== Phase 4: Hire Vote =====
-function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, canAdvance, onVote, onNext, sessionId, myName }: {
+function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, canAdvance, onVote, onNext, sessionId, myName, anonymous }: {
   candidates: CandidateRow[]; round: number; votes: CandidateVoteRow[];
   players: PlayerRow[]; myPlayerId: string | null; isHost: boolean; canAdvance: boolean;
   onVote: (candidateId: string) => void; onNext: () => void;
   sessionId: string; myName: string;
+  anonymous: boolean;
 }) {
   const roundCandidates = candidates;
   const roundVotes = votes.filter((v) => v.round_number === round);
@@ -1108,6 +1109,16 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
   for (const v of roundVotes) tally[v.candidate_id] = (tally[v.candidate_id] ?? 0) + 1;
   const winnerId = Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0];
 
+  // In open mode: map candidate -> voters
+  const voterMap: Record<string, PlayerRow[]> = {};
+  if (!anonymous) {
+    for (const v of roundVotes) {
+      const player = players.find((p) => p.id === v.player_id);
+      if (!player) continue;
+      (voterMap[v.candidate_id] ??= []).push(player);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card className="rounded-3xl p-6">
@@ -1115,7 +1126,10 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
           <Vote className="h-4 w-4" /> Phase 4 · Wer wird eingestellt?
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Jede:r stimmt für eine:n Bewerber:in. Nach der Abstimmung wird das Ergebnis angezeigt.
+          Jede:r stimmt für eine:n Bewerber:in.{" "}
+          {anonymous
+            ? "Abstimmung läuft anonym — nur die Gesamtsumme ist sichtbar."
+            : "Abstimmung läuft offen — jeder sieht live, wer für wen stimmt."}
         </p>
       </Card>
 
@@ -1125,6 +1139,7 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
           const isMine = myVote?.candidate_id === c.id;
           const isWinner = allVoted && c.id === winnerId;
           const initials = c.name.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+          const voters = voterMap[c.id] ?? [];
           return (
             <button
               key={c.id}
@@ -1141,6 +1156,18 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
               </div>
               <div className="font-display text-lg">{c.name}</div>
               <div className="text-xs text-muted-foreground line-clamp-2">{c.headline}</div>
+              {!anonymous && voters.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {voters.map((v) => (
+                    <span
+                      key={v.id}
+                      className="inline-flex items-center rounded-full bg-accent/15 px-2 py-0.5 text-[10px] text-accent"
+                    >
+                      {v.name}
+                    </span>
+                  ))}
+                </div>
+              )}
               {allVoted && (
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{count} Stimme{count === 1 ? "" : "n"}</span>
@@ -1155,6 +1182,7 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
       <div className="text-center text-sm text-muted-foreground">
         {roundVotes.length} / {players.length} abgestimmt
       </div>
+
 
       <ChatPanel
         sessionId={sessionId}
