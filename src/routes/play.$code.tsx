@@ -584,9 +584,33 @@ function Phase1Knowledge({ myBias, isHost, playersReady, assignmentsCount, canAd
             <p className="text-sm">{myBias.example}</p>
           </div>
         )}
+        {myBias.self_recognition && (
+          <div className="mt-4 rounded-2xl bg-background/60 backdrop-blur p-4 border-l-4" style={{ borderColor: myBias.color }}>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] mb-1" style={{ color: myBias.color }}>
+              <Eye className="h-3 w-3" /> Wie erkennst du ihn in dir selbst?
+            </div>
+            <p className="text-sm leading-relaxed">{myBias.self_recognition}</p>
+          </div>
+        )}
+        {myBias.source_url && (
+          <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+            <BookOpen className="h-3.5 w-3.5" />
+            <span>Wissenschaftliche Quelle:</span>
+            <a
+              href={myBias.source_url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 text-foreground underline decoration-dotted hover:text-accent"
+            >
+              {myBias.source_label ?? "mehr lesen"}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        )}
         <div className="mt-6 text-xs text-muted-foreground italic">
           Behalte deinen Bias für dich — die anderen sollen ihn nicht direkt erfahren.
         </div>
+
       </Card>
       {isHost && (
         <div className="flex flex-col items-center gap-2">
