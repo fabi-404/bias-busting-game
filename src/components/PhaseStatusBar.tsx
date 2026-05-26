@@ -13,6 +13,7 @@ export function PhaseStatusBar({
   totalPlayers,
   onReady,
   canMarkReady,
+  durationSeconds = PHASE_DURATION_SECONDS,
 }: {
   phaseStartedAt: string | null;
   iAmReady: boolean;
@@ -20,6 +21,7 @@ export function PhaseStatusBar({
   totalPlayers: number;
   onReady: () => void;
   canMarkReady: boolean;
+  durationSeconds?: number;
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
