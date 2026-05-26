@@ -12,18 +12,38 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft, Copy, Crown, Sparkles, Users, Brain, HelpCircle,
   UserCheck, Vote, Eye, Trophy, Check, X, ChevronRight, ChevronLeft,
-  BookOpen, ExternalLink, Zap, Timer as TimerIcon,
+  BookOpen, ExternalLink, Zap, Timer as TimerIcon, Star, BarChart3,
 } from "lucide-react";
 
 import {
   type SessionRow, type PlayerRow, type BiasRow, type BiasQuestionRow,
   type CandidateRow, type AssignmentRow, type QuestionAnswerRow,
   type CandidateVoteRow, type BiasGuessRow, type GamePhase, type ActionCardRow,
+  type CandidatePrevoteRow,
   TOTAL_ROUNDS, phaseLabel,
 } from "@/lib/bias-game";
 
 import { ChatPanel } from "@/components/ChatPanel";
 import { PhaseStatusBar, PHASE_DURATION_SECONDS } from "@/components/PhaseStatusBar";
+
+import cAffinity from "@/assets/candidates/c-affinity.jpg";
+import cBeauty from "@/assets/candidates/c-beauty.jpg";
+import cName from "@/assets/candidates/c-name.jpg";
+import cGender from "@/assets/candidates/c-gender.jpg";
+import cAge from "@/assets/candidates/c-age.jpg";
+
+const CANDIDATE_IMAGE_MAP: Record<string, string> = {
+  "candidate:affinity": cAffinity,
+  "candidate:beauty": cBeauty,
+  "candidate:name": cName,
+  "candidate:gender": cGender,
+  "candidate:age": cAge,
+};
+
+function resolveCandidateImage(raw: string | null): string | null {
+  if (!raw) return null;
+  return CANDIDATE_IMAGE_MAP[raw] ?? raw;
+}
 
 type ReadyRow = { player_id: string; phase_key: string };
 
