@@ -1298,3 +1298,203 @@ function ReflectionJournal({ sessionId, playerId, myBias }: {
     </Card>
   );
 }
+
+// ===== Pre-Vote (stille 1–5 Sterne) =====
+function PrevoteCard({
+  candidateId, myPrevote, prevoteCount, totalPlayers, allPrevoted, canVote, onPrevote,
+}: {
+  candidateId: string;
+  myPrevote: number | null;
+  prevoteCount: number;
+  totalPlayers: number;
+  allPrevoted: boolean;
+  canVote: boolean;
+  onPrevote: (candidateId: string, rating: number) => void;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const showValue = hover ?? myPrevote ?? 0;
+
+  return (
+    <Card className="rounded-3xl p-6 border-2 border-primary/30 bg-primary/5">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
+            <Star className="h-4 w-4" /> Stille Einzelbewertung
+          </div>
+          <h3 className="font-display text-xl mt-2">
+            {allPrevoted
+              ? "Alle haben bewertet"
+              : myPrevote
+                ? "Danke, deine Stimme ist gespeichert"
+                : "Würdest du diese Person einstellen?"}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            {allPrevoted
+              ? "Der Chat ist jetzt freigeschaltet."
+              : "Erst still für dich bewerten — der Chat öffnet sich, sobald alle abgestimmt haben."}
+          </p>
+        </div>
+        <Badge variant="secondary" className="font-mono">
+          {prevoteCount} / {totalPlayers}
+        </Badge>
+      </div>
+
+      <div className="mt-5 flex items-center gap-2 justify-center sm:justify-start">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            disabled={!canVote}
+            onClick={() => onPrevote(candidateId, n)}
+            onMouseEnter={() => setHover(n)}
+            onMouseLeave={() => setHover(null)}
+            className={cn(
+              "transition-transform",
+              canVote && "hover:scale-110",
+              !canVote && "opacity-50 cursor-not-allowed",
+            )}
+            aria-label={`${n} Stern${n === 1 ? "" : "e"}`}
+          >
+            <Star
+              className={cn("h-9 w-9 transition-colors", n <= showValue ? "fill-accent text-accent" : "text-muted-foreground/40")}
+            />
+          </button>
+        ))}
+        <span className="ml-3 text-sm text-muted-foreground tabular-nums w-12">
+          {myPrevote ? `${myPrevote} / 5` : hover ? `${hover} / 5` : ""}
+        </span>
+      </div>
+
+      <div className="mt-3 text-[11px] text-muted-foreground flex justify-between">
+        <span>1 · Auf keinen Fall</span>
+        <span>3 · Unentschieden</span>
+        <span>5 · Sofort einstellen</span>
+      </div>
+    </Card>
+  );
+}
+
+// ===== Bias-Heatmap (Endscreen) =====
+function BiasHeatmap({ players, candidates, biases, prevotes, assignments }: {
+  players: PlayerRow[];
+  candidates: CandidateRow[];
+  biases: BiasRow[];
+  prevotes: CandidatePrevoteRow[];
+  assignments: AssignmentRow[];
+}) {
+  const allCandidates = [...candidates].sort((a, b) => (a.round_number - b.round_number) || (a.position - b.position));
+  if (allCandidates.length === 0 || players.length === 0 || prevotes.length === 0) {
+    return (
+      <Card className="rounded-3xl p-6 text-left">
+        <div className="font-display text-xl mb-2">Bias-Heatmap</div>
+        <p className="text-sm text-muted-foreground">
+          Noch keine stillen Bewertungen vorhanden.
+        </p>
+      </Card>
+    );
+  }
+
+  function getRating(playerId: string, candidateId: string): number | null {
+    const row = prevotes.find((pv) => pv.player_id === playerId && pv.candidate_id === candidateId);
+    return row?.rating ?? null;
+  }
+
+  function biasFor(c: CandidateRow): BiasRow | null {
+    return c.appeals_to_bias_id ? biases.find((b) => b.id === c.appeals_to_bias_id) ?? null : null;
+  }
+
+  function playerBias(playerId: string): BiasRow | null {
+    const a = assignments.find((x) => x.player_id === playerId);
+    return a ? biases.find((b) => b.id === a.bias_id) ?? null : null;
+  }
+
+  return (
+    <Card className="rounded-3xl p-6 text-left overflow-x-auto">
+      <div className="flex items-start gap-2 mb-3">
+        <BarChart3 className="h-5 w-5 mt-0.5 text-accent" />
+        <div>
+          <div className="font-display text-xl">Bias-Heatmap</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Wer hat wen wie bewertet? Wenn die Farbe einer hohen Bewertung mit dem Bias der Spieler:in (Spaltenrand) oder der Bias-Falle der Person (Zeilenkopf) übereinstimmt, könnte der Bias mitgespielt haben.
+          </p>
+        </div>
+      </div>
+
+      <table className="w-full text-sm border-separate border-spacing-1 min-w-[480px]">
+        <thead>
+          <tr>
+            <th className="text-left text-xs uppercase tracking-wider text-muted-foreground font-normal p-2">
+              Bewerber:in
+            </th>
+            {players.map((p) => {
+              const pb = playerBias(p.id);
+              return (
+                <th key={p.id} className="text-center text-xs font-normal p-1">
+                  <div className="truncate max-w-[80px] mx-auto">{p.name}</div>
+                  {pb && (
+                    <div
+                      className="mt-1 inline-block h-1.5 w-10 rounded-full"
+                      style={{ background: pb.color }}
+                      title={pb.name}
+                    />
+                  )}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {allCandidates.map((c) => {
+            const cb = biasFor(c);
+            return (
+              <tr key={c.id}>
+                <th className="text-left text-xs font-normal p-2 align-middle">
+                  <div className="flex items-center gap-2">
+                    {cb && (
+                      <span
+                        className="inline-block h-2 w-2 rounded-full shrink-0"
+                        style={{ background: cb.color }}
+                        title={`Bias-Falle: ${cb.name}`}
+                      />
+                    )}
+                    <span className="truncate max-w-[140px]">{c.name}</span>
+                  </div>
+                </th>
+                {players.map((p) => {
+                  const r = getRating(p.id, c.id);
+                  const color = cb?.color ?? "#94a3b8";
+                  const opacity = r ? 0.15 + (r / 5) * 0.7 : 0;
+                  return (
+                    <td key={p.id} className="p-0">
+                      <div
+                        className="h-10 rounded-md grid place-items-center font-mono text-xs border border-border/40"
+                        style={{
+                          background: r ? color : "transparent",
+                          opacity: r ? undefined : 0.4,
+                          color: r && r >= 3 ? "white" : undefined,
+                        }}
+                        title={r ? `${p.name} → ${c.name}: ${r}/5` : "keine Bewertung"}
+                      >
+                        {r ? r : "·"}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <div className="mt-4 flex items-center gap-4 text-[11px] text-muted-foreground flex-wrap">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2 w-2 rounded-full bg-foreground/40" /> Punkt = Bias-Falle der Person
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-1.5 w-6 rounded-full bg-foreground/40" /> Balken = Bias der Spieler:in
+        </span>
+        <span>Farbintensität = Höhe der Bewertung (1–5)</span>
+      </div>
+    </Card>
+  );
+}
