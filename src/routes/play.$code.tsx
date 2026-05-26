@@ -89,6 +89,20 @@ function Play() {
     [myAssignment, biases],
   );
 
+  const selectedCandidates = useMemo(() => {
+    if (!session) return [];
+    if (session.selected_candidate_ids && session.selected_candidate_ids.length > 0) {
+      const map = new Map(candidates.map((c) => [c.id, c]));
+      return session.selected_candidate_ids
+        .map((id) => map.get(id))
+        .filter((c): c is CandidateRow => !!c);
+    }
+    // fallback: all candidates for the round (backward compat)
+    return candidates
+      .filter((c) => c.round_number === session.current_round)
+      .sort((a, b) => a.position - b.position);
+  }, [candidates, session]);
+
   // Redirect if no identity
   useEffect(() => {
     if (!identity) navigate({ to: "/join", search: { code } });
