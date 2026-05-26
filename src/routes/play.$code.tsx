@@ -83,7 +83,7 @@ function Play() {
     }
     setSession(sess as SessionRow);
 
-    const [b, q, c, p, a, ans, v, g, r] = await Promise.all([
+    const [b, q, c, p, a, ans, v, g, r, ac] = await Promise.all([
       supabase.from("biases").select("*").order("name"),
       supabase.from("bias_questions").select("*").order("position"),
       supabase.from("candidates").select("*").order("round_number, position"),
@@ -93,8 +93,11 @@ function Play() {
       supabase.from("candidate_votes").select("*").eq("session_id", sess.id),
       supabase.from("bias_guesses").select("*").eq("session_id", sess.id),
       supabase.from("session_phase_ready").select("player_id, phase_key").eq("session_id", sess.id),
+      supabase.from("cards").select("id, title, content, explanation, category").eq("type", "action"),
     ]);
     setBiases((b.data ?? []) as BiasRow[]);
+    setActionCards((ac.data ?? []) as ActionCardRow[]);
+
     setQuestions((q.data ?? []) as BiasQuestionRow[]);
     setCandidates((c.data ?? []) as CandidateRow[]);
     setPlayers((p.data ?? []) as PlayerRow[]);
