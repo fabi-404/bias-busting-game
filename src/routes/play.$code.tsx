@@ -14,9 +14,10 @@ import {
 import {
   type SessionRow, type PlayerRow, type BiasRow, type BiasQuestionRow,
   type CandidateRow, type AssignmentRow, type QuestionAnswerRow,
-  type CandidateVoteRow, type BiasGuessRow, type GamePhase,
+  type CandidateVoteRow, type BiasGuessRow, type GamePhase, type ActionCardRow,
   TOTAL_ROUNDS, phaseLabel,
 } from "@/lib/bias-game";
+
 import { ChatPanel } from "@/components/ChatPanel";
 import { PhaseStatusBar, PHASE_DURATION_SECONDS } from "@/components/PhaseStatusBar";
 
