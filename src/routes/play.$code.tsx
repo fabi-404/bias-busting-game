@@ -742,6 +742,15 @@ function CandidateCard({ c }: { c: CandidateRow }) {
 
 const ACTION_CARD_SECONDS = 60;
 
+function hashStr(s: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h;
+}
+
 function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext, onPrev,
   actionCards, currentActionCardId, actionCardStartedAt, nowTick, onDrawAction, onClearAction, myPlayerId }: {
   candidates: CandidateRow[]; round: number; index: number;
