@@ -1209,6 +1209,14 @@ function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myB
         </ul>
       </Card>
 
+      <BiasHeatmap
+        players={players}
+        candidates={candidates}
+        biases={biases}
+        prevotes={prevotes}
+        assignments={assignments}
+      />
+
       {myPlayerId && myBias && (
         <ReflectionJournal sessionId={sessionId} playerId={myPlayerId} myBias={myBias} />
       )}
