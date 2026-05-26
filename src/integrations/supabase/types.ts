@@ -173,6 +173,39 @@ export type Database = {
         }
         Relationships: []
       }
+      candidate_prevotes: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          id: string
+          player_id: string
+          rating: number
+          round_number: number
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          id?: string
+          player_id: string
+          rating: number
+          round_number: number
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          rating?: number
+          round_number?: number
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       candidate_votes: {
         Row: {
           candidate_id: string

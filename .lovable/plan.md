@@ -1,77 +1,56 @@
+## Ziel
 
-# BIAS — Komplettes Spielkonzept
+Drei pädagogische Erweiterungen umsetzen:
+1. Stille Einzelbewertung (1–5 Sterne) pro Bewerber:in vor dem Chat in Phase 3
+2. Bias-Heatmap in der Endauswertung
+3. Mehr Bias-Karten (insgesamt 8) + mehr Bewerber:innen-Profile
 
-Ein Multiplayer-Spiel für 4 Spieler. Jeder Spieler erhält zufällig einen von 4 Bias-Typen, der über alle 3 Runden behalten wird. Pro Runde werden 3 Bewerber für eine Stelle bewertet — beeinflusst durch den eigenen Bias.
+---
 
-## Spielablauf
+## 1. Pre-Vote (5 Sterne)
 
-```text
-Runde 1:  Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5
-Runde 2:                     Phase 3 → Phase 4 → Phase 5
-Runde 3:                     Phase 3 → Phase 4 → Phase 5
-                                                    ↓
-                                              Endauswertung
-```
+**DB:** Neue Tabelle `candidate_prevotes` (session_id, player_id, round_number, candidate_id, rating 1–5, unique pro Player+Candidate+Session). Offene RLS-Policies wie der Rest des Spiels.
 
-- **Phase 1** *(nur Runde 1)*: Wissenskarte — jeder Spieler sieht privat die Erklärung seines zugewiesenen Bias.
-- **Phase 2** *(nur Runde 1)*: Wahr/Falsch-Karten zum eigenen Bias mit Timer (30 s pro Frage, 3 Fragen).
-- **Phase 3**: 3 Bewerber werden nacheinander vorgestellt (Bild + Beschreibung). Zwischen jedem Bewerber kurze Diskussionsphase.
-- **Phase 4**: Abstimmung — welcher Bewerber wird eingestellt? Ergebnis wird angezeigt.
-- **Phase 5**: Bias-Diskussion + Abstimmung — Spieler tippen, welchen Bias andere Spieler haben.
+**UI (`Phase3Candidates`):**
+- Beim Wechsel auf eine:n Bewerber:in: zuerst Sterne-Block, kein Chat sichtbar.
+- Spieler:in wählt 1–5 → speichert in DB → eigener Pre-Vote als "abgegeben" markiert.
+- Chat erscheint erst, wenn **alle Spieler:innen** ihren Pre-Vote abgegeben haben (realtime über `candidate_prevotes`-Channel).
+- Host kann erst weiter, wenn alle abgestimmt UND Aktionskarten-Timer abgelaufen.
+- Kleiner Live-Status: "3 / 4 haben bewertet".
 
-## Datenmodell (neue/erweiterte Tabellen)
+## 2. Bias-Heatmap (Endscreen)
 
-**Neu:**
-- `biases`: name, description, knowledge_card_text, color
-- `bias_questions`: bias_id, question, correct_answer, explanation (für Phase 2)
-- `candidates`: round_number, name, image_url, description, qualifications (3 pro Runde × 3 Runden = 9)
-- `player_bias_assignments`: session_id, player_id, bias_id
-- `candidate_votes`: session_id, player_id, round_number, candidate_id (Phase 4)
-- `bias_guesses`: session_id, guesser_player_id, target_player_id, round_number, guessed_bias_id (Phase 5)
-- `bias_question_answers`: session_id, player_id, question_id, answer, correct
+Auf der Final-Results-Seite zusätzliche Karte:
+- Matrix: Spieler:innen × Bewerber:innen, Zelle = Pre-Vote-Rating (Farbintensität).
+- Daneben pro Bewerber:in der Bias-Tag (`appeals_to_bias_id`) — sichtbar macht, ob hohe Ratings mit dem Bias der jeweiligen Spieler:in korrelieren.
+- Kurzer Erklär-Text: "Wo Farbe und Bias-Farbe übereinstimmen, könnte der Bias gewirkt haben."
 
-**Erweitert — `game_sessions`:**
-- `phase` (enum: lobby, phase1_knowledge, phase2_questions, phase3_candidates, phase4_vote, phase5_bias_vote, results)
-- `current_candidate_index` (0–2 für Phase 3)
-- `phase_started_at` (für Timer)
+Implementierung als reine CSS-Grid-Heatmap (keine Chart-Lib), Farbe = `bg-[color]/opacity` basierend auf Bias-Color des Bewerbers, Opazität skaliert nach Rating.
 
-## Platzhalter-Inhalte (vom Agent generiert)
+## 3. Mehr Biases + Bewerber:innen
 
-- **4 Bias-Typen**: Halo-Effekt, Confirmation Bias, Ähnlichkeits-Bias (Similar-to-me), Attributionsfehler
-- **Pro Bias**: 1 Wissenskarte + 3 Wahr/Falsch-Fragen
-- **9 Bewerber** (3 pro Runde) mit Stockfoto-Stil-Bildern (über imagegen generiert), Namen, Lebenslauf-Beschreibung
+**Neue Biases (5 zusätzlich → insgesamt 8):**
+Affinity Bias, Beauty Bias, Name Bias, Gender Bias, Age Bias. Jeweils mit `knowledge_card_text`, `self_recognition`, akademischer Quelle, Farbe.
 
-## Screens
+**Neue Bewerber:innen:** Pro neuer Bias ein:e zusätzliche:r Bewerber:in in bestehender Runde 1 (für mehr Vielfalt im Bewertungspool). Bilder via `imagegen` (fast) generieren und unter `src/assets/candidates/` ablegen.
 
-- `/` — Landing + Spiel erstellen/beitreten (bleibt)
-- `/host/$code` — Host-Dashboard mit Phasen-Steuerung
-- `/play/$code` — Spieleransicht, reagiert auf aktuelle Phase via Supabase Realtime
-- `/admin` — Bias/Fragen/Bewerber verwalten (vorhandenen Adminbereich erweitern)
+**Wissensfragen:** Je neuer Bias 3 Wahr/Falsch-Fragen seeden.
 
-## Realtime
+---
 
-Alle Spieler abonnieren `game_sessions` + relevante Child-Tabellen über Supabase Realtime; UI rendert je nach `phase` die passende Komponente.
+## Technische Schritte (Reihenfolge)
 
-## Technische Details
+1. Migration: `candidate_prevotes` Tabelle + GRANTs + RLS.
+2. Daten-Insert: 5 neue Biases + 15 neue Fragen + 5 neue Bewerber:innen (Bild-URLs).
+3. Bilder generieren (5 Stockfoto-Stil-Porträts).
+4. `src/lib/bias-game.ts`: Interface für `PreVoteRow`.
+5. `src/routes/play.$code.tsx` Phase3:
+   - State `myPrevote`, `allPrevotes`, Realtime-Subscription.
+   - Gate: Chat + "Next"-Button erst nach vollständigen Pre-Votes.
+6. Neue Komponente `BiasHeatmap.tsx`, in Final-Results einbinden.
+7. Realtime-Publication: `candidate_prevotes` in supabase_realtime publikieren.
 
-- Phasen-Übergänge nur durch den Host (Button „Nächste Phase"), oder automatisch nach Timer (Phase 2).
-- Bias-Zuordnung passiert serverseitig beim Start (Phase 1 betreten) per `createServerFn` mit Service-Role-Client, damit andere Spieler den Bias nicht über die Browser-Devtools sehen.
-- Spieler sehen nur ihren eigenen Bias-Inhalt (RLS-artige Filterung in der Server Function über `player_token`).
-- Punktesystem: Korrekte Bias-Vermutung in Phase 5 = +1 Punkt. Optional: gemeinsame Einstellung des „richtigen" Bewerbers (z.B. der ohne Bias-Match) = Bonuspunkte.
+## Out of Scope
 
-## Migration & Code-Schritte
-
-1. **DB-Migration**: Neue Tabellen + Phase-Enum erweitern + Seed der 4 Biases, 12 Fragen, 9 Bewerber.
-2. **Bewerber-Bilder**: 9 Porträts via `imagegen` (fast) generieren und nach `src/assets/candidates/` legen, URLs in DB.
-3. **Server Functions**: `assignBiases`, `advancePhase`, `submitQuestionAnswer`, `submitCandidateVote`, `submitBiasGuess`, `getMyBias`.
-4. **Komponenten**: `PhaseKnowledgeCard`, `PhaseQuestions`, `PhaseCandidates`, `PhaseHiringVote`, `PhaseBiasGuess`, `PhaseResults`, `HostControls`, `Timer`.
-5. **Realtime-Hook**: `useGameSession(code)` — abonniert Session + leitet Phase + Spielerliste.
-6. **Host-/Player-Routen** anpassen, Admin um neue Entities erweitern.
-
-## Was ist NICHT enthalten
-
-- Echte Videos (Platzhalter: Bild + Text, wie gewünscht)
-- Chat-Funktion in Phase 4 (Diskussion findet offline/verbal statt; kann später ergänzt werden)
-- Authentifizierung mit Accounts (Spieler über `player_token` in URL/LocalStorage)
-
-Soll ich so loslegen?
+- Keine Änderung am Punktesystem.
+- Keine zusätzliche Runde — bestehender Single-Round-Flow bleibt, nur mehr Auswahl pro Runde.

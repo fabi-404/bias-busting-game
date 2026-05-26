@@ -113,6 +113,15 @@ export interface BiasGuessRow {
   is_correct: boolean;
 }
 
+export interface CandidatePrevoteRow {
+  id: string;
+  session_id: string;
+  player_id: string;
+  round_number: number;
+  candidate_id: string;
+  rating: number;
+}
+
 export const TOTAL_ROUNDS = 1;
 
 export function phaseLabel(phase: GamePhase): string {

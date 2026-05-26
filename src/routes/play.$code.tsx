@@ -12,18 +12,38 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft, Copy, Crown, Sparkles, Users, Brain, HelpCircle,
   UserCheck, Vote, Eye, Trophy, Check, X, ChevronRight, ChevronLeft,
-  BookOpen, ExternalLink, Zap, Timer as TimerIcon,
+  BookOpen, ExternalLink, Zap, Timer as TimerIcon, Star, BarChart3,
 } from "lucide-react";
 
 import {
   type SessionRow, type PlayerRow, type BiasRow, type BiasQuestionRow,
   type CandidateRow, type AssignmentRow, type QuestionAnswerRow,
   type CandidateVoteRow, type BiasGuessRow, type GamePhase, type ActionCardRow,
+  type CandidatePrevoteRow,
   TOTAL_ROUNDS, phaseLabel,
 } from "@/lib/bias-game";
 
 import { ChatPanel } from "@/components/ChatPanel";
 import { PhaseStatusBar, PHASE_DURATION_SECONDS } from "@/components/PhaseStatusBar";
+
+import cAffinity from "@/assets/candidates/c-affinity.jpg";
+import cBeauty from "@/assets/candidates/c-beauty.jpg";
+import cName from "@/assets/candidates/c-name.jpg";
+import cGender from "@/assets/candidates/c-gender.jpg";
+import cAge from "@/assets/candidates/c-age.jpg";
+
+const CANDIDATE_IMAGE_MAP: Record<string, string> = {
+  "candidate:affinity": cAffinity,
+  "candidate:beauty": cBeauty,
+  "candidate:name": cName,
+  "candidate:gender": cGender,
+  "candidate:age": cAge,
+};
+
+function resolveCandidateImage(raw: string | null): string | null {
+  if (!raw) return null;
+  return CANDIDATE_IMAGE_MAP[raw] ?? raw;
+}
 
 type ReadyRow = { player_id: string; phase_key: string };
 
@@ -48,6 +68,7 @@ function Play() {
   const [answers, setAnswers] = useState<QuestionAnswerRow[]>([]);
   const [votes, setVotes] = useState<CandidateVoteRow[]>([]);
   const [guesses, setGuesses] = useState<BiasGuessRow[]>([]);
+  const [prevotes, setPrevotes] = useState<CandidatePrevoteRow[]>([]);
   const [readyRows, setReadyRows] = useState<ReadyRow[]>([]);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
@@ -83,7 +104,7 @@ function Play() {
     }
     setSession(sess as SessionRow);
 
-    const [b, q, c, p, a, ans, v, g, r, ac] = await Promise.all([
+    const [b, q, c, p, a, ans, v, g, r, ac, pv] = await Promise.all([
       supabase.from("biases").select("*").order("name"),
       supabase.from("bias_questions").select("*").order("position"),
       supabase.from("candidates").select("*").order("round_number, position"),
@@ -94,6 +115,7 @@ function Play() {
       supabase.from("bias_guesses").select("*").eq("session_id", sess.id),
       supabase.from("session_phase_ready").select("player_id, phase_key").eq("session_id", sess.id),
       supabase.from("cards").select("id, title, content, explanation, category").eq("type", "action"),
+      supabase.from("candidate_prevotes" as never).select("*").eq("session_id", sess.id),
     ]);
     setBiases((b.data ?? []) as BiasRow[]);
     setActionCards((ac.data ?? []) as ActionCardRow[]);
@@ -106,6 +128,7 @@ function Play() {
     setVotes((v.data ?? []) as CandidateVoteRow[]);
     setGuesses((g.data ?? []) as BiasGuessRow[]);
     setReadyRows((r.data ?? []) as ReadyRow[]);
+    setPrevotes(((pv.data ?? []) as unknown) as CandidatePrevoteRow[]);
     setLoading(false);
   }, [code, navigate]);
 
@@ -148,6 +171,9 @@ function Play() {
       .on("postgres_changes", { event: "*", schema: "public", table: "session_phase_ready", filter: `session_id=eq.${session.id}` },
         () => supabase.from("session_phase_ready").select("player_id, phase_key").eq("session_id", session.id)
           .then(({ data }) => setReadyRows((data ?? []) as ReadyRow[])))
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidate_prevotes", filter: `session_id=eq.${session.id}` },
+        () => supabase.from("candidate_prevotes" as never).select("*").eq("session_id", session.id)
+          .then(({ data }) => setPrevotes(((data ?? []) as unknown) as CandidatePrevoteRow[])))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [session?.id]);
@@ -202,13 +228,16 @@ function Play() {
   async function nextCandidate() {
     if (!session || !isHost) return;
     const next = session.current_candidate_index + 1;
-    if (next >= 3) {
+    const total = candidates.filter((c) => c.round_number === session.current_round).length;
+    if (next >= total) {
       await setPhase("phase4_hire_vote");
     } else {
       await supabase.from("game_sessions").update({
         current_candidate_index: next,
+        current_action_card_id: null,
+        action_card_started_at: null,
         phase_started_at: new Date().toISOString(),
-      }).eq("id", session.id);
+      } as never).eq("id", session.id);
     }
   }
 
@@ -283,6 +312,22 @@ function Play() {
       candidate_id: candidateId,
     }, { onConflict: "session_id,player_id,round_number" });
     if (error) toast.error("Stimme nicht gespeichert.");
+  }
+
+  async function submitPrevote(candidateId: string, rating: number) {
+    if (!session || !myPlayerId) return;
+    const { error } = await supabase.from("candidate_prevotes" as never).upsert(
+      {
+        session_id: session.id,
+        player_id: myPlayerId,
+        round_number: session.current_round,
+        candidate_id: candidateId,
+        rating,
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "session_id,player_id,candidate_id" },
+    );
+    if (error) toast.error("Bewertung nicht gespeichert.");
   }
 
   async function submitBiasGuesses(picks: Record<string, string>) {
@@ -406,37 +451,52 @@ function Play() {
               />
             )}
 
-            {session.phase === "phase3_candidates" && (
-              <>
-                <Phase3Candidates
-                  candidates={candidates}
-                  round={session.current_round}
-                  index={session.current_candidate_index}
-                  isHost={isHost}
-                  canAdvance={canAdvance}
-                  onNext={nextCandidate}
-                  onPrev={prevCandidate}
-                  actionCards={actionCards}
-                  currentActionCardId={session.current_action_card_id}
-                  actionCardStartedAt={session.action_card_started_at}
-                  nowTick={nowTick}
-                  onDrawAction={drawActionCard}
-                  onClearAction={clearActionCard}
-                  myPlayerId={myPlayerId}
-                />
-
-                {myPlayerId && (
-                  <ChatPanel
-                    sessionId={session.id}
-                    myPlayerId={myPlayerId}
-                    myName={identity?.name ?? ""}
-                    phase={session.phase}
+            {session.phase === "phase3_candidates" && (() => {
+              const roundCandidates = candidates
+                .filter((c) => c.round_number === session.current_round)
+                .sort((a, b) => a.position - b.position);
+              const currentCandidate = roundCandidates[session.current_candidate_index];
+              const prevotesForCandidate = currentCandidate
+                ? prevotes.filter((pv) => pv.candidate_id === currentCandidate.id && pv.round_number === session.current_round)
+                : [];
+              const allPrevoted = players.length > 0 && prevotesForCandidate.length >= players.length;
+              return (
+                <>
+                  <Phase3Candidates
+                    candidates={candidates}
                     round={session.current_round}
-                    title="Live-Chat zur Diskussion"
+                    index={session.current_candidate_index}
+                    isHost={isHost}
+                    canAdvance={canAdvance && allPrevoted}
+                    onNext={nextCandidate}
+                    onPrev={prevCandidate}
+                    actionCards={actionCards}
+                    currentActionCardId={session.current_action_card_id}
+                    actionCardStartedAt={session.action_card_started_at}
+                    nowTick={nowTick}
+                    onDrawAction={drawActionCard}
+                    onClearAction={clearActionCard}
+                    myPlayerId={myPlayerId}
+                    players={players}
+                    prevotesForCandidate={prevotesForCandidate}
+                    onPrevote={submitPrevote}
+                    allPrevoted={allPrevoted}
                   />
-                )}
-              </>
-            )}
+
+                  {myPlayerId && allPrevoted && (
+                    <ChatPanel
+                      sessionId={session.id}
+                      myPlayerId={myPlayerId}
+                      myName={identity?.name ?? ""}
+                      phase={session.phase}
+                      round={session.current_round}
+                      title="Live-Chat zur Diskussion"
+                    />
+                  )}
+                </>
+              );
+            })()}
+
 
             {session.phase === "phase4_hire_vote" && (
               <Phase4HireVote
@@ -480,6 +540,8 @@ function Play() {
                 sessionId={session.id}
                 myPlayerId={myPlayerId}
                 myBias={myBias}
+                candidates={candidates}
+                prevotes={prevotes}
               />
             )}
 
@@ -716,11 +778,14 @@ function CandidateCard({ c }: { c: CandidateRow }) {
     <Card className="rounded-3xl overflow-hidden">
       <div className="grid sm:grid-cols-[200px_1fr]">
         <div className="aspect-square sm:aspect-auto bg-gradient-to-br from-accent/30 via-primary/20 to-accent/10 grid place-items-center">
-          {c.image_url ? (
-            <img src={c.image_url} alt={c.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="font-display text-6xl text-accent">{initials}</div>
-          )}
+          {(() => {
+            const resolved = resolveCandidateImage(c.image_url);
+            return resolved ? (
+              <img src={resolved} alt={c.name} loading="lazy" width={1024} height={1024} className="w-full h-full object-cover" />
+            ) : (
+              <div className="font-display text-6xl text-accent">{initials}</div>
+            );
+          })()}
         </div>
         <div className="p-6">
           <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Bewerber:in</div>
@@ -752,13 +817,18 @@ function hashStr(s: string): number {
 }
 
 function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext, onPrev,
-  actionCards, currentActionCardId, actionCardStartedAt, nowTick, onDrawAction, onClearAction, myPlayerId }: {
+  actionCards, currentActionCardId, actionCardStartedAt, nowTick, onDrawAction, onClearAction, myPlayerId,
+  players, prevotesForCandidate, onPrevote, allPrevoted }: {
   candidates: CandidateRow[]; round: number; index: number;
   isHost: boolean; canAdvance: boolean; onNext: () => void; onPrev: () => void;
   actionCards: ActionCardRow[]; currentActionCardId: string | null;
   actionCardStartedAt: string | null; nowTick: number;
   onDrawAction: () => void; onClearAction: () => void;
   myPlayerId: string | null;
+  players: PlayerRow[];
+  prevotesForCandidate: CandidatePrevoteRow[];
+  onPrevote: (candidateId: string, rating: number) => void;
+  allPrevoted: boolean;
 }) {
   const isActive = !!currentActionCardId;
   const pickKey = `${myPlayerId ?? "anon"}-${round}-${index}`;
@@ -790,6 +860,9 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
 
   if (!c) return <Card className="rounded-3xl p-10 text-center text-muted-foreground">Keine Bewerber für diese Runde.</Card>;
 
+  const myPrevote = prevotesForCandidate.find((pv) => pv.player_id === myPlayerId) ?? null;
+  const prevoteCount = prevotesForCandidate.length;
+  const totalPlayers = players.length;
   const actionPending = !!activeCard && remaining > 0;
   const blockAdvance = !canAdvance || actionPending;
 
@@ -801,14 +874,28 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
       <div key={c.id} className="animate-fade-in">
         <CandidateCard c={c} />
       </div>
-      <Card className="rounded-2xl p-4 bg-muted/30">
-        <div className="flex items-start gap-2">
-          <Users className="h-4 w-4 mt-0.5 text-accent" />
-          <p className="text-sm text-muted-foreground">
-            Diskutiert kurz: Wie wirkt diese Person auf euch? Würdet ihr sie einstellen?
-          </p>
-        </div>
-      </Card>
+
+      {/* Pre-Vote: Stille Einzelbewertung */}
+      <PrevoteCard
+        candidateId={c.id}
+        myPrevote={myPrevote?.rating ?? null}
+        prevoteCount={prevoteCount}
+        totalPlayers={totalPlayers}
+        allPrevoted={allPrevoted}
+        canVote={!!myPlayerId}
+        onPrevote={onPrevote}
+      />
+
+      {allPrevoted && (
+        <Card className="rounded-2xl p-4 bg-muted/30 animate-fade-in">
+          <div className="flex items-start gap-2">
+            <Users className="h-4 w-4 mt-0.5 text-accent" />
+            <p className="text-sm text-muted-foreground">
+              Alle haben still bewertet. Jetzt: Diskutiert im Chat. Wie wirkt diese Person? Würdet ihr sie einstellen?
+            </p>
+          </div>
+        </Card>
+      )}
 
       {activeCard ? (
         <Card className="rounded-3xl p-6 border-2 border-accent bg-accent/5 animate-scale-in">
@@ -1081,9 +1168,10 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
 }
 
 // ===== Final Results =====
-function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias }: {
+function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias, candidates, prevotes }: {
   players: PlayerRow[]; biases: BiasRow[]; assignments: AssignmentRow[];
   sessionId: string; myPlayerId: string | null; myBias: BiasRow | null;
+  candidates: CandidateRow[]; prevotes: CandidatePrevoteRow[];
 }) {
   const ranked = [...players].sort((a, b) => b.score - a.score);
   const top = ranked[0]?.score ?? 0;
@@ -1120,6 +1208,14 @@ function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myB
           })}
         </ul>
       </Card>
+
+      <BiasHeatmap
+        players={players}
+        candidates={candidates}
+        biases={biases}
+        prevotes={prevotes}
+        assignments={assignments}
+      />
 
       {myPlayerId && myBias && (
         <ReflectionJournal sessionId={sessionId} playerId={myPlayerId} myBias={myBias} />
@@ -1209,6 +1305,206 @@ function ReflectionJournal({ sessionId, playerId, myBias }: {
         <Button onClick={save} disabled={saving || loading || content.trim().length === 0}>
           {saving ? "Speichert…" : "Reflexion speichern"}
         </Button>
+      </div>
+    </Card>
+  );
+}
+
+// ===== Pre-Vote (stille 1–5 Sterne) =====
+function PrevoteCard({
+  candidateId, myPrevote, prevoteCount, totalPlayers, allPrevoted, canVote, onPrevote,
+}: {
+  candidateId: string;
+  myPrevote: number | null;
+  prevoteCount: number;
+  totalPlayers: number;
+  allPrevoted: boolean;
+  canVote: boolean;
+  onPrevote: (candidateId: string, rating: number) => void;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const showValue = hover ?? myPrevote ?? 0;
+
+  return (
+    <Card className="rounded-3xl p-6 border-2 border-primary/30 bg-primary/5">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
+            <Star className="h-4 w-4" /> Stille Einzelbewertung
+          </div>
+          <h3 className="font-display text-xl mt-2">
+            {allPrevoted
+              ? "Alle haben bewertet"
+              : myPrevote
+                ? "Danke, deine Stimme ist gespeichert"
+                : "Würdest du diese Person einstellen?"}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            {allPrevoted
+              ? "Der Chat ist jetzt freigeschaltet."
+              : "Erst still für dich bewerten — der Chat öffnet sich, sobald alle abgestimmt haben."}
+          </p>
+        </div>
+        <Badge variant="secondary" className="font-mono">
+          {prevoteCount} / {totalPlayers}
+        </Badge>
+      </div>
+
+      <div className="mt-5 flex items-center gap-2 justify-center sm:justify-start">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            disabled={!canVote}
+            onClick={() => onPrevote(candidateId, n)}
+            onMouseEnter={() => setHover(n)}
+            onMouseLeave={() => setHover(null)}
+            className={cn(
+              "transition-transform",
+              canVote && "hover:scale-110",
+              !canVote && "opacity-50 cursor-not-allowed",
+            )}
+            aria-label={`${n} Stern${n === 1 ? "" : "e"}`}
+          >
+            <Star
+              className={cn("h-9 w-9 transition-colors", n <= showValue ? "fill-accent text-accent" : "text-muted-foreground/40")}
+            />
+          </button>
+        ))}
+        <span className="ml-3 text-sm text-muted-foreground tabular-nums w-12">
+          {myPrevote ? `${myPrevote} / 5` : hover ? `${hover} / 5` : ""}
+        </span>
+      </div>
+
+      <div className="mt-3 text-[11px] text-muted-foreground flex justify-between">
+        <span>1 · Auf keinen Fall</span>
+        <span>3 · Unentschieden</span>
+        <span>5 · Sofort einstellen</span>
+      </div>
+    </Card>
+  );
+}
+
+// ===== Bias-Heatmap (Endscreen) =====
+function BiasHeatmap({ players, candidates, biases, prevotes, assignments }: {
+  players: PlayerRow[];
+  candidates: CandidateRow[];
+  biases: BiasRow[];
+  prevotes: CandidatePrevoteRow[];
+  assignments: AssignmentRow[];
+}) {
+  const allCandidates = [...candidates].sort((a, b) => (a.round_number - b.round_number) || (a.position - b.position));
+  if (allCandidates.length === 0 || players.length === 0 || prevotes.length === 0) {
+    return (
+      <Card className="rounded-3xl p-6 text-left">
+        <div className="font-display text-xl mb-2">Bias-Heatmap</div>
+        <p className="text-sm text-muted-foreground">
+          Noch keine stillen Bewertungen vorhanden.
+        </p>
+      </Card>
+    );
+  }
+
+  function getRating(playerId: string, candidateId: string): number | null {
+    const row = prevotes.find((pv) => pv.player_id === playerId && pv.candidate_id === candidateId);
+    return row?.rating ?? null;
+  }
+
+  function biasFor(c: CandidateRow): BiasRow | null {
+    return c.appeals_to_bias_id ? biases.find((b) => b.id === c.appeals_to_bias_id) ?? null : null;
+  }
+
+  function playerBias(playerId: string): BiasRow | null {
+    const a = assignments.find((x) => x.player_id === playerId);
+    return a ? biases.find((b) => b.id === a.bias_id) ?? null : null;
+  }
+
+  return (
+    <Card className="rounded-3xl p-6 text-left overflow-x-auto">
+      <div className="flex items-start gap-2 mb-3">
+        <BarChart3 className="h-5 w-5 mt-0.5 text-accent" />
+        <div>
+          <div className="font-display text-xl">Bias-Heatmap</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Wer hat wen wie bewertet? Wenn die Farbe einer hohen Bewertung mit dem Bias der Spieler:in (Spaltenrand) oder der Bias-Falle der Person (Zeilenkopf) übereinstimmt, könnte der Bias mitgespielt haben.
+          </p>
+        </div>
+      </div>
+
+      <table className="w-full text-sm border-separate border-spacing-1 min-w-[480px]">
+        <thead>
+          <tr>
+            <th className="text-left text-xs uppercase tracking-wider text-muted-foreground font-normal p-2">
+              Bewerber:in
+            </th>
+            {players.map((p) => {
+              const pb = playerBias(p.id);
+              return (
+                <th key={p.id} className="text-center text-xs font-normal p-1">
+                  <div className="truncate max-w-[80px] mx-auto">{p.name}</div>
+                  {pb && (
+                    <div
+                      className="mt-1 inline-block h-1.5 w-10 rounded-full"
+                      style={{ background: pb.color }}
+                      title={pb.name}
+                    />
+                  )}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {allCandidates.map((c) => {
+            const cb = biasFor(c);
+            return (
+              <tr key={c.id}>
+                <th className="text-left text-xs font-normal p-2 align-middle">
+                  <div className="flex items-center gap-2">
+                    {cb && (
+                      <span
+                        className="inline-block h-2 w-2 rounded-full shrink-0"
+                        style={{ background: cb.color }}
+                        title={`Bias-Falle: ${cb.name}`}
+                      />
+                    )}
+                    <span className="truncate max-w-[140px]">{c.name}</span>
+                  </div>
+                </th>
+                {players.map((p) => {
+                  const r = getRating(p.id, c.id);
+                  const color = cb?.color ?? "#94a3b8";
+                  const opacity = r ? 0.15 + (r / 5) * 0.7 : 0;
+                  return (
+                    <td key={p.id} className="p-0">
+                      <div
+                        className="h-10 rounded-md grid place-items-center font-mono text-xs border border-border/40"
+                        style={{
+                          background: r ? color : "transparent",
+                          opacity: r ? undefined : 0.4,
+                          color: r && r >= 3 ? "white" : undefined,
+                        }}
+                        title={r ? `${p.name} → ${c.name}: ${r}/5` : "keine Bewertung"}
+                      >
+                        {r ? r : "·"}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <div className="mt-4 flex items-center gap-4 text-[11px] text-muted-foreground flex-wrap">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2 w-2 rounded-full bg-foreground/40" /> Punkt = Bias-Falle der Person
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-1.5 w-6 rounded-full bg-foreground/40" /> Balken = Bias der Spieler:in
+        </span>
+        <span>Farbintensität = Höhe der Bewertung (1–5)</span>
       </div>
     </Card>
   );
