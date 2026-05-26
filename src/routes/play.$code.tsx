@@ -516,7 +516,7 @@ function Play() {
 
             {session.phase === "phase4_hire_vote" && (
               <Phase4HireVote
-                candidates={candidates}
+                candidates={selectedCandidates}
                 round={session.current_round}
                 votes={votes}
                 players={players}
