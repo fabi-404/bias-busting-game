@@ -1227,7 +1227,7 @@ function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myB
 
       <BiasHeatmap
         players={players}
-        candidates={candidates}
+        candidates={selectedCandidates}
         biases={biases}
         prevotes={prevotes}
         assignments={assignments}
