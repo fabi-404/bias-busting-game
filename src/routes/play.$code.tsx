@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
+
 import {
   ArrowLeft, Copy, Crown, Sparkles, Users, Brain, HelpCircle,
   UserCheck, Vote, Eye, Trophy, Check, X, ChevronRight, ChevronLeft,
