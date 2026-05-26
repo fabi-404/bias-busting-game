@@ -42,6 +42,8 @@ function Play() {
   const [biases, setBiases] = useState<BiasRow[]>([]);
   const [questions, setQuestions] = useState<BiasQuestionRow[]>([]);
   const [candidates, setCandidates] = useState<CandidateRow[]>([]);
+  const [actionCards, setActionCards] = useState<ActionCardRow[]>([]);
+
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [answers, setAnswers] = useState<QuestionAnswerRow[]>([]);
   const [votes, setVotes] = useState<CandidateVoteRow[]>([]);
