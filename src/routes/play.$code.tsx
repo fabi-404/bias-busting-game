@@ -247,7 +247,7 @@ function Play() {
   async function nextCandidate() {
     if (!session || !isHost) return;
     const next = session.current_candidate_index + 1;
-    const total = candidates.filter((c) => c.round_number === session.current_round).length;
+    const total = selectedCandidates.length;
     if (next >= total) {
       await setPhase("phase4_hire_vote");
     } else {
