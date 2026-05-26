@@ -743,14 +743,19 @@ function CandidateCard({ c }: { c: CandidateRow }) {
 const ACTION_CARD_SECONDS = 60;
 
 function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext, onPrev,
-  actionCards, currentActionCardId, actionCardStartedAt, nowTick, onDrawAction, onClearAction }: {
+  actionCards, currentActionCardId, actionCardStartedAt, nowTick, onDrawAction, onClearAction, myPlayerId }: {
   candidates: CandidateRow[]; round: number; index: number;
   isHost: boolean; canAdvance: boolean; onNext: () => void; onPrev: () => void;
   actionCards: ActionCardRow[]; currentActionCardId: string | null;
   actionCardStartedAt: string | null; nowTick: number;
   onDrawAction: () => void; onClearAction: () => void;
+  myPlayerId: string | null;
 }) {
-  const activeCard = currentActionCardId ? actionCards.find((c) => c.id === currentActionCardId) ?? null : null;
+  const isActive = !!currentActionCardId;
+  const pickKey = `${myPlayerId ?? "anon"}-${round}-${index}`;
+  const activeCard = isActive && actionCards.length > 0
+    ? actionCards[hashStr(pickKey) % actionCards.length]
+    : null;
   const startMs = actionCardStartedAt ? new Date(actionCardStartedAt).getTime() : null;
   const elapsed = startMs ? Math.max(0, Math.floor((nowTick - startMs) / 1000)) : 0;
   const remaining = Math.max(0, ACTION_CARD_SECONDS - elapsed);
