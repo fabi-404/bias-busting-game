@@ -776,11 +776,14 @@ function CandidateCard({ c }: { c: CandidateRow }) {
     <Card className="rounded-3xl overflow-hidden">
       <div className="grid sm:grid-cols-[200px_1fr]">
         <div className="aspect-square sm:aspect-auto bg-gradient-to-br from-accent/30 via-primary/20 to-accent/10 grid place-items-center">
-          {c.image_url ? (
-            <img src={c.image_url} alt={c.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="font-display text-6xl text-accent">{initials}</div>
-          )}
+          {(() => {
+            const resolved = resolveCandidateImage(c.image_url);
+            return resolved ? (
+              <img src={resolved} alt={c.name} loading="lazy" width={1024} height={1024} className="w-full h-full object-cover" />
+            ) : (
+              <div className="font-display text-6xl text-accent">{initials}</div>
+            );
+          })()}
         </div>
         <div className="p-6">
           <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Bewerber:in</div>
