@@ -314,6 +314,22 @@ function Play() {
     if (error) toast.error("Stimme nicht gespeichert.");
   }
 
+  async function submitPrevote(candidateId: string, rating: number) {
+    if (!session || !myPlayerId) return;
+    const { error } = await supabase.from("candidate_prevotes" as never).upsert(
+      {
+        session_id: session.id,
+        player_id: myPlayerId,
+        round_number: session.current_round,
+        candidate_id: candidateId,
+        rating,
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "session_id,player_id,candidate_id" },
+    );
+    if (error) toast.error("Bewertung nicht gespeichert.");
+  }
+
   async function submitBiasGuesses(picks: Record<string, string>) {
     if (!session || !myPlayerId) return;
     const rows = Object.entries(picks).map(([targetId, biasId]) => {
