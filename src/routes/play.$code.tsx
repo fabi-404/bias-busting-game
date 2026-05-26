@@ -89,6 +89,20 @@ function Play() {
     [myAssignment, biases],
   );
 
+  const selectedCandidates = useMemo(() => {
+    if (!session) return [];
+    if (session.selected_candidate_ids && session.selected_candidate_ids.length > 0) {
+      const map = new Map(candidates.map((c) => [c.id, c]));
+      return session.selected_candidate_ids
+        .map((id) => map.get(id))
+        .filter((c): c is CandidateRow => !!c);
+    }
+    // fallback: all candidates for the round (backward compat)
+    return candidates
+      .filter((c) => c.round_number === session.current_round)
+      .sort((a, b) => a.position - b.position);
+  }, [candidates, session]);
+
   // Redirect if no identity
   useEffect(() => {
     if (!identity) navigate({ to: "/join", search: { code } });
@@ -192,6 +206,10 @@ function Play() {
     }));
     const { error: aErr } = await supabase.from("player_bias_assignments").insert(rows);
     if (aErr) { toast.error("Bias-Zuordnung fehlgeschlagen."); return; }
+    // Randomly select 3 candidates for this session
+    const pool = candidates.filter((c) => c.round_number === 1);
+    const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+    const selected = shuffledPool.slice(0, 3).map((c) => c.id);
     await supabase.from("game_sessions").update({
       phase: "phase1_knowledge",
       status: "playing",
@@ -199,6 +217,7 @@ function Play() {
       current_question_index: 0,
       current_candidate_index: 0,
       phase_started_at: new Date().toISOString(),
+      selected_candidate_ids: selected,
     }).eq("id", session.id);
   }
 
@@ -228,7 +247,7 @@ function Play() {
   async function nextCandidate() {
     if (!session || !isHost) return;
     const next = session.current_candidate_index + 1;
-    const total = candidates.filter((c) => c.round_number === session.current_round).length;
+    const total = selectedCandidates.length;
     if (next >= total) {
       await setPhase("phase4_hire_vote");
     } else {
@@ -452,10 +471,7 @@ function Play() {
             )}
 
             {session.phase === "phase3_candidates" && (() => {
-              const roundCandidates = candidates
-                .filter((c) => c.round_number === session.current_round)
-                .sort((a, b) => a.position - b.position);
-              const currentCandidate = roundCandidates[session.current_candidate_index];
+              const currentCandidate = selectedCandidates[session.current_candidate_index];
               const prevotesForCandidate = currentCandidate
                 ? prevotes.filter((pv) => pv.candidate_id === currentCandidate.id && pv.round_number === session.current_round)
                 : [];
@@ -463,7 +479,7 @@ function Play() {
               return (
                 <>
                   <Phase3Candidates
-                    candidates={candidates}
+                    candidates={selectedCandidates}
                     round={session.current_round}
                     index={session.current_candidate_index}
                     isHost={isHost}
@@ -500,7 +516,7 @@ function Play() {
 
             {session.phase === "phase4_hire_vote" && (
               <Phase4HireVote
-                candidates={candidates}
+                candidates={selectedCandidates}
                 round={session.current_round}
                 votes={votes}
                 players={players}
@@ -541,6 +557,7 @@ function Play() {
                 myPlayerId={myPlayerId}
                 myBias={myBias}
                 candidates={candidates}
+                selectedCandidates={selectedCandidates}
                 prevotes={prevotes}
               />
             )}
@@ -839,8 +856,7 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
   const elapsed = startMs ? Math.max(0, Math.floor((nowTick - startMs) / 1000)) : 0;
   const remaining = Math.max(0, ACTION_CARD_SECONDS - elapsed);
 
-  const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
-  const c = roundCandidates[index];
+  const c = candidates[index];
 
   // Auto-draw a mandatory action card once per candidate (host only)
   const drawnKeyRef = useRef<string | null>(null);
@@ -869,7 +885,7 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
   return (
     <div className="space-y-4">
       <div className="text-xs text-muted-foreground">
-        Bewerber:in {index + 1} von {roundCandidates.length}
+        Bewerber:in {index + 1} von {candidates.length}
       </div>
       <div key={c.id} className="animate-fade-in">
         <CandidateCard c={c} />
@@ -930,7 +946,7 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
               </Button>
             )}
             <Button size="lg" onClick={onNext} disabled={blockAdvance} className="h-12">
-              {index + 1 >= roundCandidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
+              {index + 1 >= candidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
@@ -953,7 +969,7 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
   onVote: (candidateId: string) => void; onNext: () => void;
   sessionId: string; myName: string;
 }) {
-  const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
+  const roundCandidates = candidates;
   const roundVotes = votes.filter((v) => v.round_number === round);
   const myVote = roundVotes.find((v) => v.player_id === myPlayerId);
   const allVoted = roundVotes.length >= players.length;
@@ -1168,10 +1184,10 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
 }
 
 // ===== Final Results =====
-function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias, candidates, prevotes }: {
+function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias, candidates, selectedCandidates, prevotes }: {
   players: PlayerRow[]; biases: BiasRow[]; assignments: AssignmentRow[];
   sessionId: string; myPlayerId: string | null; myBias: BiasRow | null;
-  candidates: CandidateRow[]; prevotes: CandidatePrevoteRow[];
+  candidates: CandidateRow[]; selectedCandidates: CandidateRow[]; prevotes: CandidatePrevoteRow[];
 }) {
   const ranked = [...players].sort((a, b) => b.score - a.score);
   const top = ranked[0]?.score ?? 0;
@@ -1211,7 +1227,7 @@ function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myB
 
       <BiasHeatmap
         players={players}
-        candidates={candidates}
+        candidates={selectedCandidates}
         biases={biases}
         prevotes={prevotes}
         assignments={assignments}

@@ -24,6 +24,7 @@ export interface SessionRow {
   total_rounds: number;
   current_action_card_id: string | null;
   action_card_started_at: string | null;
+  selected_candidate_ids: string[] | null;
 }
 
 
