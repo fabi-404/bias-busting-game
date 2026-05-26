@@ -815,13 +815,18 @@ function hashStr(s: string): number {
 }
 
 function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext, onPrev,
-  actionCards, currentActionCardId, actionCardStartedAt, nowTick, onDrawAction, onClearAction, myPlayerId }: {
+  actionCards, currentActionCardId, actionCardStartedAt, nowTick, onDrawAction, onClearAction, myPlayerId,
+  players, prevotesForCandidate, onPrevote, allPrevoted }: {
   candidates: CandidateRow[]; round: number; index: number;
   isHost: boolean; canAdvance: boolean; onNext: () => void; onPrev: () => void;
   actionCards: ActionCardRow[]; currentActionCardId: string | null;
   actionCardStartedAt: string | null; nowTick: number;
   onDrawAction: () => void; onClearAction: () => void;
   myPlayerId: string | null;
+  players: PlayerRow[];
+  prevotesForCandidate: CandidatePrevoteRow[];
+  onPrevote: (candidateId: string, rating: number) => void;
+  allPrevoted: boolean;
 }) {
   const isActive = !!currentActionCardId;
   const pickKey = `${myPlayerId ?? "anon"}-${round}-${index}`;
@@ -853,6 +858,9 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
 
   if (!c) return <Card className="rounded-3xl p-10 text-center text-muted-foreground">Keine Bewerber für diese Runde.</Card>;
 
+  const myPrevote = prevotesForCandidate.find((pv) => pv.player_id === myPlayerId) ?? null;
+  const prevoteCount = prevotesForCandidate.length;
+  const totalPlayers = players.length;
   const actionPending = !!activeCard && remaining > 0;
   const blockAdvance = !canAdvance || actionPending;
 
@@ -864,14 +872,28 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
       <div key={c.id} className="animate-fade-in">
         <CandidateCard c={c} />
       </div>
-      <Card className="rounded-2xl p-4 bg-muted/30">
-        <div className="flex items-start gap-2">
-          <Users className="h-4 w-4 mt-0.5 text-accent" />
-          <p className="text-sm text-muted-foreground">
-            Diskutiert kurz: Wie wirkt diese Person auf euch? Würdet ihr sie einstellen?
-          </p>
-        </div>
-      </Card>
+
+      {/* Pre-Vote: Stille Einzelbewertung */}
+      <PrevoteCard
+        candidateId={c.id}
+        myPrevote={myPrevote?.rating ?? null}
+        prevoteCount={prevoteCount}
+        totalPlayers={totalPlayers}
+        allPrevoted={allPrevoted}
+        canVote={!!myPlayerId}
+        onPrevote={onPrevote}
+      />
+
+      {allPrevoted && (
+        <Card className="rounded-2xl p-4 bg-muted/30 animate-fade-in">
+          <div className="flex items-start gap-2">
+            <Users className="h-4 w-4 mt-0.5 text-accent" />
+            <p className="text-sm text-muted-foreground">
+              Alle haben still bewertet. Jetzt: Diskutiert im Chat. Wie wirkt diese Person? Würdet ihr sie einstellen?
+            </p>
+          </div>
+        </Card>
+      )}
 
       {activeCard ? (
         <Card className="rounded-3xl p-6 border-2 border-accent bg-accent/5 animate-scale-in">
