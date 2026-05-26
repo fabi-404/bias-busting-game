@@ -390,9 +390,10 @@ function Play() {
   const iAmReady = !!(myPlayerId && readyForStep.find((r) => r.player_id === myPlayerId));
   const showStatusBar = session.phase !== "lobby" && session.phase !== "final_results";
 
+  const phaseDuration = session.phase_duration_seconds ?? PHASE_DURATION_SECONDS;
   const startMs = session.phase_started_at ? new Date(session.phase_started_at).getTime() : Date.now();
   const elapsed = Math.max(0, Math.floor((nowTick - startMs) / 1000));
-  const timerExpired = elapsed >= PHASE_DURATION_SECONDS;
+  const timerExpired = elapsed >= phaseDuration;
   const allReady = players.length > 0 && readyCount >= players.length;
   const canAdvance = allReady || timerExpired;
 
@@ -437,11 +438,22 @@ function Play() {
                 totalPlayers={players.length}
                 onReady={markReady}
                 canMarkReady={!!myPlayerId}
+                durationSeconds={phaseDuration}
               />
             )}
 
             {session.phase === "lobby" && (
-              <LobbyView code={code} isHost={isHost} players={players} onStart={startGame} />
+              <LobbyView
+                code={code}
+                isHost={isHost}
+                players={players}
+                onStart={startGame}
+                phaseDuration={phaseDuration}
+                anonymousVoting={session.anonymous_voting ?? true}
+                onUpdateSettings={async (patch) => {
+                  await supabase.from("game_sessions").update(patch).eq("id", session.id);
+                }}
+              />
             )}
 
             {session.phase === "phase1_knowledge" && (
@@ -527,6 +539,7 @@ function Play() {
                 onNext={() => setPhase("phase5_bias_guess")}
                 sessionId={session.id}
                 myName={identity?.name ?? ""}
+                anonymous={session.anonymous_voting ?? true}
               />
             )}
 
@@ -613,28 +626,144 @@ function PlayerSidebar({ players, myPlayerId, myBias, phase }: {
 }
 
 // ===== Lobby =====
-function LobbyView({ code, isHost, players, onStart }: {
-  code: string; isHost: boolean; players: PlayerRow[]; onStart: () => void;
+function LobbyView({ code, isHost, players, onStart, phaseDuration, anonymousVoting, onUpdateSettings }: {
+  code: string;
+  isHost: boolean;
+  players: PlayerRow[];
+  onStart: () => void;
+  phaseDuration: number;
+  anonymousVoting: boolean;
+  onUpdateSettings: (patch: Partial<SessionRow>) => Promise<void>;
 }) {
+  const [rulesOpen, setRulesOpen] = useState(true);
+  const minutes = Math.max(1, Math.min(5, Math.round(phaseDuration / 60)));
+
   return (
-    <Card className="rounded-3xl p-10 text-center">
-      <Users className="mx-auto h-12 w-12 text-accent" />
-      <div className="font-display text-4xl mt-4">Lobby</div>
-      <p className="text-muted-foreground mt-2">
-        Teilt den Code <span className="text-accent font-display tracking-[0.3em]">{code}</span> mit eurem Team.
-      </p>
-      <p className="text-sm text-muted-foreground mt-4">
-        {players.length} {players.length === 1 ? "Spieler:in" : "Spieler:innen"} verbunden.
-        Empfohlen: 4 Personen, mindestens 2.
-      </p>
-      {isHost ? (
-        <Button size="lg" onClick={onStart} className="mt-8 h-12">
-          <Sparkles className="h-4 w-4 mr-2" /> Spiel starten
-        </Button>
-      ) : (
-        <div className="mt-8 text-sm text-muted-foreground">Warte auf den Host…</div>
+    <div className="space-y-4">
+      {/* Onboarding / Rules */}
+      <Card className="rounded-3xl overflow-hidden">
+        <button
+          onClick={() => setRulesOpen((v) => !v)}
+          className="w-full flex items-center justify-between p-5 hover:bg-muted/30 transition"
+        >
+          <div className="flex items-center gap-3">
+            <BookOpen className="h-5 w-5 text-accent" />
+            <div className="text-left">
+              <div className="font-display text-lg">Spielregeln & Onboarding</div>
+              <div className="text-xs text-muted-foreground">Was ist ein Bias? Wie läuft das Spiel?</div>
+            </div>
+          </div>
+          {rulesOpen ? <ChevronLeft className="h-4 w-4 rotate-90" /> : <ChevronRight className="h-4 w-4 rotate-90" />}
+        </button>
+        {rulesOpen && (
+          <div className="px-5 pb-6 space-y-4 text-sm leading-relaxed border-t border-border/40 pt-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-accent mb-1">Was ist ein Bias?</div>
+              <p className="text-muted-foreground">
+                Unbewusste Denkmuster (Unconscious Biases) beeinflussen Entscheidungen — besonders im Recruiting.
+                In diesem Spiel erlebst du selbst, wie sie wirken.
+              </p>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-accent mb-1">Ablauf in 5 Phasen</div>
+              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                <li><b className="text-foreground">Wissenskarte</b> — Du erhältst geheim einen Bias zugewiesen.</li>
+                <li><b className="text-foreground">Wissensfragen</b> — Wahr/Falsch zu deinem Bias (Punkte).</li>
+                <li><b className="text-foreground">Bewerber:innen</b> — Drei Profile, jeweils still 1–5 Sterne bewerten, dann diskutieren. Aktionskarten lenken bewusst die Wahrnehmung.</li>
+                <li><b className="text-foreground">Einstellung</b> — Gemeinsam abstimmen, wer den Job bekommt.</li>
+                <li><b className="text-foreground">Bias raten</b> — Welcher Bias wurde wem zugeordnet? Jeder Treffer = Punkt.</li>
+              </ol>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-accent mb-1">Wichtig</div>
+              <p className="text-muted-foreground">
+                Verrate deinen Bias nicht direkt. Spiele bewusst in seine Richtung — das macht die Auswertung am Ende eindrucksvoll.
+              </p>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Host Settings */}
+      {isHost && (
+        <Card className="rounded-3xl p-5">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-accent mb-3">
+            <TimerIcon className="h-4 w-4" /> Workshop-Einstellungen
+          </div>
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium">Timer pro Phase</label>
+                <span className="font-display text-lg">{minutes} Min</span>
+              </div>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => onUpdateSettings({ phase_duration_seconds: m * 60 })}
+                    className={cn(
+                      "flex-1 rounded-xl border-2 py-2 text-sm font-medium transition",
+                      m === minutes
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border hover:border-accent/50",
+                    )}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Gilt für alle Phasen. Empfohlen für Seminare: 3–5 Min.
+              </p>
+            </div>
+            <div className="flex items-start justify-between gap-4 pt-2 border-t border-border/40">
+              <div className="flex-1">
+                <div className="text-sm font-medium">Anonyme Abstimmung (Phase 4)</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {anonymousVoting
+                    ? "Nur die Gesamtsumme wird gezeigt — fördert ehrliches Bias-Verhalten."
+                    : "Wer für wen gestimmt hat ist live sichtbar."}
+                </p>
+              </div>
+              <button
+                onClick={() => onUpdateSettings({ anonymous_voting: !anonymousVoting })}
+                className={cn(
+                  "relative h-7 w-12 rounded-full transition",
+                  anonymousVoting ? "bg-accent" : "bg-muted",
+                )}
+                aria-label="Anonyme Abstimmung umschalten"
+              >
+                <span
+                  className={cn(
+                    "absolute top-0.5 h-6 w-6 rounded-full bg-background shadow transition-transform",
+                    anonymousVoting ? "translate-x-5" : "translate-x-0.5",
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+        </Card>
       )}
-    </Card>
+
+      <Card className="rounded-3xl p-10 text-center">
+        <Users className="mx-auto h-12 w-12 text-accent" />
+        <div className="font-display text-4xl mt-4">Lobby</div>
+        <p className="text-muted-foreground mt-2">
+          Teilt den Code <span className="text-accent font-display tracking-[0.3em]">{code}</span> mit eurem Team.
+        </p>
+        <p className="text-sm text-muted-foreground mt-4">
+          {players.length} {players.length === 1 ? "Spieler:in" : "Spieler:innen"} verbunden.
+          Empfohlen: 4 Personen, mindestens 2.
+        </p>
+        {isHost ? (
+          <Button size="lg" onClick={onStart} className="mt-8 h-12">
+            <Sparkles className="h-4 w-4 mr-2" /> Spiel starten
+          </Button>
+        ) : (
+          <div className="mt-8 text-sm text-muted-foreground">Warte auf den Host…</div>
+        )}
+      </Card>
+    </div>
   );
 }
 
@@ -963,11 +1092,12 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
 }
 
 // ===== Phase 4: Hire Vote =====
-function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, canAdvance, onVote, onNext, sessionId, myName }: {
+function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost, canAdvance, onVote, onNext, sessionId, myName, anonymous }: {
   candidates: CandidateRow[]; round: number; votes: CandidateVoteRow[];
   players: PlayerRow[]; myPlayerId: string | null; isHost: boolean; canAdvance: boolean;
   onVote: (candidateId: string) => void; onNext: () => void;
   sessionId: string; myName: string;
+  anonymous: boolean;
 }) {
   const roundCandidates = candidates;
   const roundVotes = votes.filter((v) => v.round_number === round);
@@ -979,6 +1109,16 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
   for (const v of roundVotes) tally[v.candidate_id] = (tally[v.candidate_id] ?? 0) + 1;
   const winnerId = Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0];
 
+  // In open mode: map candidate -> voters
+  const voterMap: Record<string, PlayerRow[]> = {};
+  if (!anonymous) {
+    for (const v of roundVotes) {
+      const player = players.find((p) => p.id === v.player_id);
+      if (!player) continue;
+      (voterMap[v.candidate_id] ??= []).push(player);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card className="rounded-3xl p-6">
@@ -986,7 +1126,10 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
           <Vote className="h-4 w-4" /> Phase 4 · Wer wird eingestellt?
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Jede:r stimmt für eine:n Bewerber:in. Nach der Abstimmung wird das Ergebnis angezeigt.
+          Jede:r stimmt für eine:n Bewerber:in.{" "}
+          {anonymous
+            ? "Abstimmung läuft anonym — nur die Gesamtsumme ist sichtbar."
+            : "Abstimmung läuft offen — jeder sieht live, wer für wen stimmt."}
         </p>
       </Card>
 
@@ -996,6 +1139,7 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
           const isMine = myVote?.candidate_id === c.id;
           const isWinner = allVoted && c.id === winnerId;
           const initials = c.name.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+          const voters = voterMap[c.id] ?? [];
           return (
             <button
               key={c.id}
@@ -1012,6 +1156,18 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
               </div>
               <div className="font-display text-lg">{c.name}</div>
               <div className="text-xs text-muted-foreground line-clamp-2">{c.headline}</div>
+              {!anonymous && voters.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {voters.map((v) => (
+                    <span
+                      key={v.id}
+                      className="inline-flex items-center rounded-full bg-accent/15 px-2 py-0.5 text-[10px] text-accent"
+                    >
+                      {v.name}
+                    </span>
+                  ))}
+                </div>
+              )}
               {allVoted && (
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{count} Stimme{count === 1 ? "" : "n"}</span>
@@ -1026,6 +1182,7 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
       <div className="text-center text-sm text-muted-foreground">
         {roundVotes.length} / {players.length} abgestimmt
       </div>
+
 
       <ChatPanel
         sessionId={sessionId}

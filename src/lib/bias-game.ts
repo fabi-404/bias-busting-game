@@ -25,6 +25,8 @@ export interface SessionRow {
   current_action_card_id: string | null;
   action_card_started_at: string | null;
   selected_candidate_ids: string[] | null;
+  phase_duration_seconds: number;
+  anonymous_voting: boolean;
 }
 
 

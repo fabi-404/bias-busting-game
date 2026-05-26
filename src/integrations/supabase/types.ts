@@ -369,6 +369,7 @@ export type Database = {
       game_sessions: {
         Row: {
           action_card_started_at: string | null
+          anonymous_voting: boolean
           code: string
           created_at: string
           current_action_card_id: string | null
@@ -380,6 +381,7 @@ export type Database = {
           host_token: string
           id: string
           phase: Database["public"]["Enums"]["game_phase"]
+          phase_duration_seconds: number
           phase_started_at: string | null
           revealed: boolean
           round_number: number
@@ -390,6 +392,7 @@ export type Database = {
         }
         Insert: {
           action_card_started_at?: string | null
+          anonymous_voting?: boolean
           code: string
           created_at?: string
           current_action_card_id?: string | null
@@ -401,6 +404,7 @@ export type Database = {
           host_token?: string
           id?: string
           phase?: Database["public"]["Enums"]["game_phase"]
+          phase_duration_seconds?: number
           phase_started_at?: string | null
           revealed?: boolean
           round_number?: number
@@ -411,6 +415,7 @@ export type Database = {
         }
         Update: {
           action_card_started_at?: string | null
+          anonymous_voting?: boolean
           code?: string
           created_at?: string
           current_action_card_id?: string | null
@@ -422,6 +427,7 @@ export type Database = {
           host_token?: string
           id?: string
           phase?: Database["public"]["Enums"]["game_phase"]
+          phase_duration_seconds?: number
           phase_started_at?: string | null
           revealed?: boolean
           round_number?: number

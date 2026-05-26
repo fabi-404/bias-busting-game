@@ -13,6 +13,7 @@ export function PhaseStatusBar({
   totalPlayers,
   onReady,
   canMarkReady,
+  durationSeconds = PHASE_DURATION_SECONDS,
 }: {
   phaseStartedAt: string | null;
   iAmReady: boolean;
@@ -20,6 +21,7 @@ export function PhaseStatusBar({
   totalPlayers: number;
   onReady: () => void;
   canMarkReady: boolean;
+  durationSeconds?: number;
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -29,10 +31,10 @@ export function PhaseStatusBar({
 
   const startMs = phaseStartedAt ? new Date(phaseStartedAt).getTime() : now;
   const elapsed = Math.max(0, Math.floor((now - startMs) / 1000));
-  const remaining = Math.max(0, PHASE_DURATION_SECONDS - elapsed);
+  const remaining = Math.max(0, durationSeconds - elapsed);
   const mm = Math.floor(remaining / 60);
   const ss = remaining % 60;
-  const pct = Math.min(100, (elapsed / PHASE_DURATION_SECONDS) * 100);
+  const pct = Math.min(100, (elapsed / durationSeconds) * 100);
   const urgent = remaining <= 15 && remaining > 0;
   const expired = remaining === 0;
 
