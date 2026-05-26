@@ -1050,8 +1050,9 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
 }
 
 // ===== Final Results =====
-function FinalResults({ players, biases, assignments }: {
+function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias }: {
   players: PlayerRow[]; biases: BiasRow[]; assignments: AssignmentRow[];
+  sessionId: string; myPlayerId: string | null; myBias: BiasRow | null;
 }) {
   const ranked = [...players].sort((a, b) => b.score - a.score);
   const top = ranked[0]?.score ?? 0;
@@ -1088,7 +1089,98 @@ function FinalResults({ players, biases, assignments }: {
           })}
         </ul>
       </Card>
+
+      {myPlayerId && myBias && (
+        <ReflectionJournal sessionId={sessionId} playerId={myPlayerId} myBias={myBias} />
+      )}
+
       <Link to="/"><Button size="lg" variant="outline" className="h-12">Zur Startseite</Button></Link>
     </div>
   );
+}
+
+// ===== Reflection Journal =====
+function ReflectionJournal({ sessionId, playerId, myBias }: {
+  sessionId: string; playerId: string; myBias: BiasRow;
+}) {
+  const [content, setContent] = useState("");
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("reflection_journals" as never)
+        .select("content, updated_at")
+        .eq("session_id", sessionId)
+        .eq("player_id", playerId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        setContent((data as { content: string }).content ?? "");
+        setSavedAt((data as { updated_at: string }).updated_at ?? null);
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [sessionId, playerId]);
+
+  async function save() {
+    setSaving(true);
+    const { error } = await supabase
+      .from("reflection_journals" as never)
+      .upsert(
+        { session_id: sessionId, player_id: playerId, content, updated_at: new Date().toISOString() } as never,
+        { onConflict: "session_id,player_id" },
+      );
+    setSaving(false);
+    if (error) { toast.error("Konnte Reflexion nicht speichern."); return; }
+    setSavedAt(new Date().toISOString());
+    toast.success("Reflexion gespeichert");
+  }
+
+  const prompts = [
+    `Welche deiner Entscheidungen heute könnten von deinem Bias (${myBias.name}) beeinflusst worden sein?`,
+    "In welchem Moment hast du gemerkt, dass du den Bias aktiv ausgespielt hast — oder ihm widerstanden hast?",
+    "Was nimmst du für echte Recruiting-Situationen mit?",
+  ];
+
+  return (
+    <Card className="rounded-3xl p-6 text-left" style={{ borderColor: myBias.color, borderWidth: 2 }}>
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em]" style={{ color: myBias.color }}>
+        <BookOpen className="h-4 w-4" /> Reflexions-Journal
+      </div>
+      <h2 className="mt-2 font-display text-2xl">Deine persönliche Auswertung</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Nimm dir 5 Minuten. Diese Notizen sind nur für dich — sie verlassen den Spielraum nicht.
+      </p>
+      <ul className="mt-4 space-y-2 text-sm">
+        {prompts.map((p, i) => (
+          <li key={i} className="flex gap-2">
+            <span className="font-display text-base" style={{ color: myBias.color }}>{i + 1}.</span>
+            <span>{p}</span>
+          </li>
+        ))}
+      </ul>
+      <Textarea
+        className="mt-4 min-h-[180px]"
+        placeholder={loading ? "Lädt…" : "Schreibe hier deine Gedanken…"}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        disabled={loading}
+      />
+      <div className="mt-3 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          {savedAt ? `Gespeichert: ${new Date(savedAt).toLocaleTimeString()}` : "Noch nicht gespeichert"}
+        </span>
+        <Button onClick={save} disabled={saving || loading || content.trim().length === 0}>
+          {saving ? "Speichert…" : "Reflexion speichern"}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 }
