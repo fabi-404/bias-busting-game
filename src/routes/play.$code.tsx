@@ -884,7 +884,7 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
   return (
     <div className="space-y-4">
       <div className="text-xs text-muted-foreground">
-        Bewerber:in {index + 1} von {roundCandidates.length}
+        Bewerber:in {index + 1} von {candidates.length}
       </div>
       <div key={c.id} className="animate-fade-in">
         <CandidateCard c={c} />
@@ -945,7 +945,7 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
               </Button>
             )}
             <Button size="lg" onClick={onNext} disabled={blockAdvance} className="h-12">
-              {index + 1 >= roundCandidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
+              {index + 1 >= candidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
