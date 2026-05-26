@@ -443,7 +443,17 @@ function Play() {
             )}
 
             {session.phase === "lobby" && (
-              <LobbyView code={code} isHost={isHost} players={players} onStart={startGame} />
+              <LobbyView
+                code={code}
+                isHost={isHost}
+                players={players}
+                onStart={startGame}
+                phaseDuration={phaseDuration}
+                anonymousVoting={session.anonymous_voting ?? true}
+                onUpdateSettings={async (patch) => {
+                  await supabase.from("game_sessions").update(patch).eq("id", session.id);
+                }}
+              />
             )}
 
             {session.phase === "phase1_knowledge" && (
