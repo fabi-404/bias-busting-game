@@ -228,13 +228,16 @@ function Play() {
   async function nextCandidate() {
     if (!session || !isHost) return;
     const next = session.current_candidate_index + 1;
-    if (next >= 3) {
+    const total = candidates.filter((c) => c.round_number === session.current_round).length;
+    if (next >= total) {
       await setPhase("phase4_hire_vote");
     } else {
       await supabase.from("game_sessions").update({
         current_candidate_index: next,
+        current_action_card_id: null,
+        action_card_started_at: null,
         phase_started_at: new Date().toISOString(),
-      }).eq("id", session.id);
+      } as never).eq("id", session.id);
     }
   }
 
