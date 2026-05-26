@@ -416,7 +416,14 @@ function Play() {
                   canAdvance={canAdvance}
                   onNext={nextCandidate}
                   onPrev={prevCandidate}
+                  actionCards={actionCards}
+                  currentActionCardId={session.current_action_card_id}
+                  actionCardStartedAt={session.action_card_started_at}
+                  nowTick={nowTick}
+                  onDrawAction={drawActionCard}
+                  onClearAction={clearActionCard}
                 />
+
                 {myPlayerId && (
                   <ChatPanel
                     sessionId={session.id}
