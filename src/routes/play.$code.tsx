@@ -221,6 +221,24 @@ function Play() {
     }).eq("id", session.id);
   }
 
+  async function drawActionCard() {
+    if (!session || !isHost || actionCards.length === 0) return;
+    const pick = actionCards[Math.floor(Math.random() * actionCards.length)];
+    await supabase.from("game_sessions").update({
+      current_action_card_id: pick.id,
+      action_card_started_at: new Date().toISOString(),
+    } as never).eq("id", session.id);
+  }
+
+  async function clearActionCard() {
+    if (!session || !isHost) return;
+    await supabase.from("game_sessions").update({
+      current_action_card_id: null,
+      action_card_started_at: null,
+    } as never).eq("id", session.id);
+  }
+
+
   async function nextRound() {
     if (!session || !isHost) return;
     if (session.current_round >= TOTAL_ROUNDS) {
