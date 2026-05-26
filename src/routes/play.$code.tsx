@@ -540,6 +540,8 @@ function Play() {
                 sessionId={session.id}
                 myPlayerId={myPlayerId}
                 myBias={myBias}
+                candidates={candidates}
+                prevotes={prevotes}
               />
             )}
 
