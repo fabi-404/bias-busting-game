@@ -1168,9 +1168,10 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
 }
 
 // ===== Final Results =====
-function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias }: {
+function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias, candidates, prevotes }: {
   players: PlayerRow[]; biases: BiasRow[]; assignments: AssignmentRow[];
   sessionId: string; myPlayerId: string | null; myBias: BiasRow | null;
+  candidates: CandidateRow[]; prevotes: CandidatePrevoteRow[];
 }) {
   const ranked = [...players].sort((a, b) => b.score - a.score);
   const top = ranked[0]?.score ?? 0;
