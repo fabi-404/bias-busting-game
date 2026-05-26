@@ -476,8 +476,12 @@ function Play() {
                 players={players}
                 biases={biases}
                 assignments={assignments}
+                sessionId={session.id}
+                myPlayerId={myPlayerId}
+                myBias={myBias}
               />
             )}
+
           </div>
 
           <PlayerSidebar
