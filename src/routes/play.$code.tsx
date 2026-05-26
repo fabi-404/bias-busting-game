@@ -745,7 +745,51 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
           </p>
         </div>
       </Card>
+
+      {activeCard ? (
+        <Card className="rounded-3xl p-6 border-2 border-accent bg-accent/5 animate-scale-in">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-accent">
+              <Zap className="h-4 w-4" /> Aktionskarte · alle mitmachen
+            </div>
+            <div className="flex items-center gap-1 text-sm font-mono tabular-nums" style={{ color: remaining <= 10 ? "hsl(var(--destructive))" : undefined }}>
+              <TimerIcon className="h-4 w-4" />
+              {String(Math.floor(remaining / 60)).padStart(1, "0")}:{String(remaining % 60).padStart(2, "0")}
+            </div>
+          </div>
+          <h3 className="mt-3 font-display text-2xl">{activeCard.title}</h3>
+          <p className="mt-2 text-base">{activeCard.content}</p>
+          {activeCard.explanation && (
+            <p className="mt-3 text-sm text-muted-foreground italic">{activeCard.explanation}</p>
+          )}
+          {isHost && (
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" size="sm" onClick={onClearAction}>Aktion beenden</Button>
+            </div>
+          )}
+        </Card>
+      ) : isHost && actionCards.length > 0 ? (
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={onDrawAction} className="h-10">
+            <Zap className="h-4 w-4 mr-2" /> Aktionskarte ziehen (60 Sek.)
+          </Button>
+        </div>
+      ) : null}
+
       {isHost && (
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex justify-center gap-3">
+            {index > 0 && (
+              <Button size="lg" variant="outline" onClick={onPrev} className="h-12">
+                <ChevronLeft className="h-4 w-4 mr-1" /> Zurück
+              </Button>
+            )}
+            <Button size="lg" onClick={onNext} disabled={!canAdvance} className="h-12">
+              {index + 1 >= roundCandidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+
         <div className="flex flex-col items-center gap-2">
           <div className="flex justify-center gap-3">
             {index > 0 && (
