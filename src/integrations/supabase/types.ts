@@ -383,6 +383,7 @@ export type Database = {
           phase_started_at: string | null
           revealed: boolean
           round_number: number
+          selected_candidate_ids: string[] | null
           status: Database["public"]["Enums"]["session_status"]
           total_rounds: number
           updated_at: string
@@ -403,6 +404,7 @@ export type Database = {
           phase_started_at?: string | null
           revealed?: boolean
           round_number?: number
+          selected_candidate_ids?: string[] | null
           status?: Database["public"]["Enums"]["session_status"]
           total_rounds?: number
           updated_at?: string
@@ -423,6 +425,7 @@ export type Database = {
           phase_started_at?: string | null
           revealed?: boolean
           round_number?: number
+          selected_candidate_ids?: string[] | null
           status?: Database["public"]["Enums"]["session_status"]
           total_rounds?: number
           updated_at?: string
