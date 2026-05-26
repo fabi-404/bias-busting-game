@@ -451,37 +451,52 @@ function Play() {
               />
             )}
 
-            {session.phase === "phase3_candidates" && (
-              <>
-                <Phase3Candidates
-                  candidates={candidates}
-                  round={session.current_round}
-                  index={session.current_candidate_index}
-                  isHost={isHost}
-                  canAdvance={canAdvance}
-                  onNext={nextCandidate}
-                  onPrev={prevCandidate}
-                  actionCards={actionCards}
-                  currentActionCardId={session.current_action_card_id}
-                  actionCardStartedAt={session.action_card_started_at}
-                  nowTick={nowTick}
-                  onDrawAction={drawActionCard}
-                  onClearAction={clearActionCard}
-                  myPlayerId={myPlayerId}
-                />
-
-                {myPlayerId && (
-                  <ChatPanel
-                    sessionId={session.id}
-                    myPlayerId={myPlayerId}
-                    myName={identity?.name ?? ""}
-                    phase={session.phase}
+            {session.phase === "phase3_candidates" && (() => {
+              const roundCandidates = candidates
+                .filter((c) => c.round_number === session.current_round)
+                .sort((a, b) => a.position - b.position);
+              const currentCandidate = roundCandidates[session.current_candidate_index];
+              const prevotesForCandidate = currentCandidate
+                ? prevotes.filter((pv) => pv.candidate_id === currentCandidate.id && pv.round_number === session.current_round)
+                : [];
+              const allPrevoted = players.length > 0 && prevotesForCandidate.length >= players.length;
+              return (
+                <>
+                  <Phase3Candidates
+                    candidates={candidates}
                     round={session.current_round}
-                    title="Live-Chat zur Diskussion"
+                    index={session.current_candidate_index}
+                    isHost={isHost}
+                    canAdvance={canAdvance && allPrevoted}
+                    onNext={nextCandidate}
+                    onPrev={prevCandidate}
+                    actionCards={actionCards}
+                    currentActionCardId={session.current_action_card_id}
+                    actionCardStartedAt={session.action_card_started_at}
+                    nowTick={nowTick}
+                    onDrawAction={drawActionCard}
+                    onClearAction={clearActionCard}
+                    myPlayerId={myPlayerId}
+                    players={players}
+                    prevotesForCandidate={prevotesForCandidate}
+                    onPrevote={submitPrevote}
+                    allPrevoted={allPrevoted}
                   />
-                )}
-              </>
-            )}
+
+                  {myPlayerId && allPrevoted && (
+                    <ChatPanel
+                      sessionId={session.id}
+                      myPlayerId={myPlayerId}
+                      myName={identity?.name ?? ""}
+                      phase={session.phase}
+                      round={session.current_round}
+                      title="Live-Chat zur Diskussion"
+                    />
+                  )}
+                </>
+              );
+            })()}
+
 
             {session.phase === "phase4_hire_vote" && (
               <Phase4HireVote
