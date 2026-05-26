@@ -171,6 +171,9 @@ function Play() {
       .on("postgres_changes", { event: "*", schema: "public", table: "session_phase_ready", filter: `session_id=eq.${session.id}` },
         () => supabase.from("session_phase_ready").select("player_id, phase_key").eq("session_id", session.id)
           .then(({ data }) => setReadyRows((data ?? []) as ReadyRow[])))
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidate_prevotes", filter: `session_id=eq.${session.id}` },
+        () => supabase.from("candidate_prevotes" as never).select("*").eq("session_id", session.id)
+          .then(({ data }) => setPrevotes(((data ?? []) as unknown) as CandidatePrevoteRow[])))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [session?.id]);
