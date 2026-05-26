@@ -557,6 +557,7 @@ function Play() {
                 myPlayerId={myPlayerId}
                 myBias={myBias}
                 candidates={candidates}
+                selectedCandidates={selectedCandidates}
                 prevotes={prevotes}
               />
             )}
