@@ -10,7 +10,9 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Copy, Crown, Sparkles, Users, Brain, HelpCircle,
   UserCheck, Vote, Eye, Trophy, Check, X, ChevronRight, ChevronLeft,
+  BookOpen, ExternalLink, Zap, Timer as TimerIcon,
 } from "lucide-react";
+
 import {
   type SessionRow, type PlayerRow, type BiasRow, type BiasQuestionRow,
   type CandidateRow, type AssignmentRow, type QuestionAnswerRow,
