@@ -968,7 +968,7 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
   onVote: (candidateId: string) => void; onNext: () => void;
   sessionId: string; myName: string;
 }) {
-  const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
+  const roundCandidates = candidates;
   const roundVotes = votes.filter((v) => v.round_number === round);
   const myVote = roundVotes.find((v) => v.player_id === myPlayerId);
   const allVoted = roundVotes.length >= players.length;
