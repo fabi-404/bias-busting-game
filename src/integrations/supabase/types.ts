@@ -139,8 +139,11 @@ export type Database = {
           id: string
           knowledge_card_text: string
           name: string
+          self_recognition: string | null
           short_description: string
           slug: string
+          source_label: string | null
+          source_url: string | null
         }
         Insert: {
           color?: string
@@ -149,8 +152,11 @@ export type Database = {
           id?: string
           knowledge_card_text: string
           name: string
+          self_recognition?: string | null
           short_description: string
           slug: string
+          source_label?: string | null
+          source_url?: string | null
         }
         Update: {
           color?: string
@@ -159,8 +165,11 @@ export type Database = {
           id?: string
           knowledge_card_text?: string
           name?: string
+          self_recognition?: string | null
           short_description?: string
           slug?: string
+          source_label?: string | null
+          source_url?: string | null
         }
         Relationships: []
       }
@@ -326,8 +335,10 @@ export type Database = {
       }
       game_sessions: {
         Row: {
+          action_card_started_at: string | null
           code: string
           created_at: string
+          current_action_card_id: string | null
           current_candidate_index: number
           current_card_id: string | null
           current_question_index: number
@@ -344,8 +355,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          action_card_started_at?: string | null
           code: string
           created_at?: string
+          current_action_card_id?: string | null
           current_candidate_index?: number
           current_card_id?: string | null
           current_question_index?: number
@@ -362,8 +375,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          action_card_started_at?: string | null
           code?: string
           created_at?: string
+          current_action_card_id?: string | null
           current_candidate_index?: number
           current_card_id?: string | null
           current_question_index?: number
@@ -420,6 +435,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reflection_journals: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          player_id: string
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          player_id: string
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       session_card_history: {
         Row: {
