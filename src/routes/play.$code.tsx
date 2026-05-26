@@ -1182,5 +1182,3 @@ function ReflectionJournal({ sessionId, playerId, myBias }: {
     </Card>
   );
 }
-
-}
