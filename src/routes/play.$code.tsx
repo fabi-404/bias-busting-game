@@ -539,6 +539,7 @@ function Play() {
                 onNext={() => setPhase("phase5_bias_guess")}
                 sessionId={session.id}
                 myName={identity?.name ?? ""}
+                anonymous={session.anonymous_voting ?? true}
               />
             )}
 
