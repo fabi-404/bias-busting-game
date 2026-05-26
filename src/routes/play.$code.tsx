@@ -438,6 +438,7 @@ function Play() {
                 totalPlayers={players.length}
                 onReady={markReady}
                 canMarkReady={!!myPlayerId}
+                durationSeconds={phaseDuration}
               />
             )}
 
