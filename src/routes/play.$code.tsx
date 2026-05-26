@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getIdentity, setIdentity } from "@/lib/game-storage";
 import { Button } from "@/components/ui/button";
@@ -756,7 +756,28 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
 
   const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
   const c = roundCandidates[index];
+
+  // Auto-draw a mandatory action card once per candidate (host only)
+  const drawnKeyRef = useRef<string | null>(null);
+  const drawnForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isHost || !c) return;
+    const key = `${round}-${index}-${c.id}`;
+    if (activeCard || currentActionCardId) {
+      drawnForRef.current = key;
+      return;
+    }
+    if (drawnKeyRef.current === key || drawnForRef.current === key) return;
+    if (actionCards.length === 0) return;
+    drawnKeyRef.current = key;
+    onDrawAction();
+  }, [isHost, c, round, index, activeCard, currentActionCardId, actionCards.length, onDrawAction]);
+
   if (!c) return <Card className="rounded-3xl p-10 text-center text-muted-foreground">Keine Bewerber für diese Runde.</Card>;
+
+  const actionPending = !!activeCard && remaining > 0;
+  const blockAdvance = !canAdvance || actionPending;
+
   return (
     <div className="space-y-4">
       <div className="text-xs text-muted-foreground">
@@ -778,7 +799,7 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
         <Card className="rounded-3xl p-6 border-2 border-accent bg-accent/5 animate-scale-in">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-accent">
-              <Zap className="h-4 w-4" /> Aktionskarte · alle mitmachen
+              <Zap className="h-4 w-4" /> Aktionskarte · alle mitmachen (Pflicht)
             </div>
             <div className="flex items-center gap-1 text-sm font-mono tabular-nums" style={{ color: remaining <= 10 ? "hsl(var(--destructive))" : undefined }}>
               <TimerIcon className="h-4 w-4" />
@@ -790,23 +811,15 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
           {activeCard.explanation && (
             <p className="mt-3 text-sm text-muted-foreground italic">{activeCard.explanation}</p>
           )}
-          {isHost && (
+          {isHost && remaining === 0 && (
             <div className="mt-4 flex justify-end">
               <Button variant="outline" size="sm" onClick={onClearAction}>Aktion beenden</Button>
             </div>
           )}
         </Card>
-      ) : isHost && actionCards.length > 0 ? (
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={onDrawAction} className="h-10">
-            <Zap className="h-4 w-4 mr-2" /> Aktionskarte ziehen (60 Sek.)
-          </Button>
-        </div>
       ) : null}
 
       {isHost && (
-
-
         <div className="flex flex-col items-center gap-2">
           <div className="flex justify-center gap-3">
             {index > 0 && (
@@ -814,12 +827,15 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
                 <ChevronLeft className="h-4 w-4 mr-1" /> Zurück
               </Button>
             )}
-            <Button size="lg" onClick={onNext} disabled={!canAdvance} className="h-12">
+            <Button size="lg" onClick={onNext} disabled={blockAdvance} className="h-12">
               {index + 1 >= roundCandidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
-          {!canAdvance && (
+          {actionPending && (
+            <p className="text-xs text-muted-foreground">Aktionskarte läuft – bitte gemeinsam durchführen ({remaining}s).</p>
+          )}
+          {!actionPending && !canAdvance && (
             <p className="text-xs text-muted-foreground">Warte bis alle bereit sind oder der Timer abläuft.</p>
           )}
         </div>
