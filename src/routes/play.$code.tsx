@@ -390,9 +390,10 @@ function Play() {
   const iAmReady = !!(myPlayerId && readyForStep.find((r) => r.player_id === myPlayerId));
   const showStatusBar = session.phase !== "lobby" && session.phase !== "final_results";
 
+  const phaseDuration = session.phase_duration_seconds ?? PHASE_DURATION_SECONDS;
   const startMs = session.phase_started_at ? new Date(session.phase_started_at).getTime() : Date.now();
   const elapsed = Math.max(0, Math.floor((nowTick - startMs) / 1000));
-  const timerExpired = elapsed >= PHASE_DURATION_SECONDS;
+  const timerExpired = elapsed >= phaseDuration;
   const allReady = players.length > 0 && readyCount >= players.length;
   const canAdvance = allReady || timerExpired;
 
