@@ -206,6 +206,10 @@ function Play() {
     }));
     const { error: aErr } = await supabase.from("player_bias_assignments").insert(rows);
     if (aErr) { toast.error("Bias-Zuordnung fehlgeschlagen."); return; }
+    // Randomly select 3 candidates for this session
+    const pool = candidates.filter((c) => c.round_number === 1);
+    const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+    const selected = shuffledPool.slice(0, 3).map((c) => c.id);
     await supabase.from("game_sessions").update({
       phase: "phase1_knowledge",
       status: "playing",
@@ -213,6 +217,7 @@ function Play() {
       current_question_index: 0,
       current_candidate_index: 0,
       phase_started_at: new Date().toISOString(),
+      selected_candidate_ids: selected,
     }).eq("id", session.id);
   }
 
