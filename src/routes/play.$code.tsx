@@ -471,10 +471,7 @@ function Play() {
             )}
 
             {session.phase === "phase3_candidates" && (() => {
-              const roundCandidates = candidates
-                .filter((c) => c.round_number === session.current_round)
-                .sort((a, b) => a.position - b.position);
-              const currentCandidate = roundCandidates[session.current_candidate_index];
+              const currentCandidate = selectedCandidates[session.current_candidate_index];
               const prevotesForCandidate = currentCandidate
                 ? prevotes.filter((pv) => pv.candidate_id === currentCandidate.id && pv.round_number === session.current_round)
                 : [];
@@ -482,7 +479,7 @@ function Play() {
               return (
                 <>
                   <Phase3Candidates
-                    candidates={candidates}
+                    candidates={selectedCandidates}
                     round={session.current_round}
                     index={session.current_candidate_index}
                     isHost={isHost}
