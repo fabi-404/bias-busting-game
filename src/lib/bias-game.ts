@@ -22,7 +22,10 @@ export interface SessionRow {
   host_name: string;
   host_token: string;
   total_rounds: number;
+  current_action_card_id: string | null;
+  action_card_started_at: string | null;
 }
+
 
 export interface PlayerRow {
   id: string;
@@ -39,7 +42,19 @@ export interface BiasRow {
   knowledge_card_text: string;
   example: string | null;
   color: string;
+  self_recognition: string | null;
+  source_label: string | null;
+  source_url: string | null;
 }
+
+export interface ActionCardRow {
+  id: string;
+  title: string;
+  content: string;
+  explanation: string | null;
+  category: string | null;
+}
+
 
 export interface BiasQuestionRow {
   id: string;

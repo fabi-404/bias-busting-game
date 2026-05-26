@@ -7,16 +7,21 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
+
 import {
   ArrowLeft, Copy, Crown, Sparkles, Users, Brain, HelpCircle,
   UserCheck, Vote, Eye, Trophy, Check, X, ChevronRight, ChevronLeft,
+  BookOpen, ExternalLink, Zap, Timer as TimerIcon,
 } from "lucide-react";
+
 import {
   type SessionRow, type PlayerRow, type BiasRow, type BiasQuestionRow,
   type CandidateRow, type AssignmentRow, type QuestionAnswerRow,
-  type CandidateVoteRow, type BiasGuessRow, type GamePhase,
+  type CandidateVoteRow, type BiasGuessRow, type GamePhase, type ActionCardRow,
   TOTAL_ROUNDS, phaseLabel,
 } from "@/lib/bias-game";
+
 import { ChatPanel } from "@/components/ChatPanel";
 import { PhaseStatusBar, PHASE_DURATION_SECONDS } from "@/components/PhaseStatusBar";
 
@@ -37,6 +42,8 @@ function Play() {
   const [biases, setBiases] = useState<BiasRow[]>([]);
   const [questions, setQuestions] = useState<BiasQuestionRow[]>([]);
   const [candidates, setCandidates] = useState<CandidateRow[]>([]);
+  const [actionCards, setActionCards] = useState<ActionCardRow[]>([]);
+
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [answers, setAnswers] = useState<QuestionAnswerRow[]>([]);
   const [votes, setVotes] = useState<CandidateVoteRow[]>([]);
@@ -76,7 +83,7 @@ function Play() {
     }
     setSession(sess as SessionRow);
 
-    const [b, q, c, p, a, ans, v, g, r] = await Promise.all([
+    const [b, q, c, p, a, ans, v, g, r, ac] = await Promise.all([
       supabase.from("biases").select("*").order("name"),
       supabase.from("bias_questions").select("*").order("position"),
       supabase.from("candidates").select("*").order("round_number, position"),
@@ -86,8 +93,11 @@ function Play() {
       supabase.from("candidate_votes").select("*").eq("session_id", sess.id),
       supabase.from("bias_guesses").select("*").eq("session_id", sess.id),
       supabase.from("session_phase_ready").select("player_id, phase_key").eq("session_id", sess.id),
+      supabase.from("cards").select("id, title, content, explanation, category").eq("type", "action"),
     ]);
     setBiases((b.data ?? []) as BiasRow[]);
+    setActionCards((ac.data ?? []) as ActionCardRow[]);
+
     setQuestions((q.data ?? []) as BiasQuestionRow[]);
     setCandidates((c.data ?? []) as CandidateRow[]);
     setPlayers((p.data ?? []) as PlayerRow[]);
@@ -210,6 +220,24 @@ function Play() {
       phase_started_at: new Date().toISOString(),
     }).eq("id", session.id);
   }
+
+  async function drawActionCard() {
+    if (!session || !isHost || actionCards.length === 0) return;
+    const pick = actionCards[Math.floor(Math.random() * actionCards.length)];
+    await supabase.from("game_sessions").update({
+      current_action_card_id: pick.id,
+      action_card_started_at: new Date().toISOString(),
+    } as never).eq("id", session.id);
+  }
+
+  async function clearActionCard() {
+    if (!session || !isHost) return;
+    await supabase.from("game_sessions").update({
+      current_action_card_id: null,
+      action_card_started_at: null,
+    } as never).eq("id", session.id);
+  }
+
 
   async function nextRound() {
     if (!session || !isHost) return;
@@ -388,7 +416,14 @@ function Play() {
                   canAdvance={canAdvance}
                   onNext={nextCandidate}
                   onPrev={prevCandidate}
+                  actionCards={actionCards}
+                  currentActionCardId={session.current_action_card_id}
+                  actionCardStartedAt={session.action_card_started_at}
+                  nowTick={nowTick}
+                  onDrawAction={drawActionCard}
+                  onClearAction={clearActionCard}
                 />
+
                 {myPlayerId && (
                   <ChatPanel
                     sessionId={session.id}
@@ -441,8 +476,12 @@ function Play() {
                 players={players}
                 biases={biases}
                 assignments={assignments}
+                sessionId={session.id}
+                myPlayerId={myPlayerId}
+                myBias={myBias}
               />
             )}
+
           </div>
 
           <PlayerSidebar
@@ -549,9 +588,33 @@ function Phase1Knowledge({ myBias, isHost, playersReady, assignmentsCount, canAd
             <p className="text-sm">{myBias.example}</p>
           </div>
         )}
+        {myBias.self_recognition && (
+          <div className="mt-4 rounded-2xl bg-background/60 backdrop-blur p-4 border-l-4" style={{ borderColor: myBias.color }}>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] mb-1" style={{ color: myBias.color }}>
+              <Eye className="h-3 w-3" /> Wie erkennst du ihn in dir selbst?
+            </div>
+            <p className="text-sm leading-relaxed">{myBias.self_recognition}</p>
+          </div>
+        )}
+        {myBias.source_url && (
+          <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+            <BookOpen className="h-3.5 w-3.5" />
+            <span>Wissenschaftliche Quelle:</span>
+            <a
+              href={myBias.source_url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 text-foreground underline decoration-dotted hover:text-accent"
+            >
+              {myBias.source_label ?? "mehr lesen"}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        )}
         <div className="mt-6 text-xs text-muted-foreground italic">
           Behalte deinen Bias für dich — die anderen sollen ihn nicht direkt erfahren.
         </div>
+
       </Card>
       {isHost && (
         <div className="flex flex-col items-center gap-2">
@@ -676,10 +739,21 @@ function CandidateCard({ c }: { c: CandidateRow }) {
   );
 }
 
-function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext, onPrev }: {
+const ACTION_CARD_SECONDS = 60;
+
+function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext, onPrev,
+  actionCards, currentActionCardId, actionCardStartedAt, nowTick, onDrawAction, onClearAction }: {
   candidates: CandidateRow[]; round: number; index: number;
   isHost: boolean; canAdvance: boolean; onNext: () => void; onPrev: () => void;
+  actionCards: ActionCardRow[]; currentActionCardId: string | null;
+  actionCardStartedAt: string | null; nowTick: number;
+  onDrawAction: () => void; onClearAction: () => void;
 }) {
+  const activeCard = currentActionCardId ? actionCards.find((c) => c.id === currentActionCardId) ?? null : null;
+  const startMs = actionCardStartedAt ? new Date(actionCardStartedAt).getTime() : null;
+  const elapsed = startMs ? Math.max(0, Math.floor((nowTick - startMs) / 1000)) : 0;
+  const remaining = Math.max(0, ACTION_CARD_SECONDS - elapsed);
+
   const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
   const c = roundCandidates[index];
   if (!c) return <Card className="rounded-3xl p-10 text-center text-muted-foreground">Keine Bewerber für diese Runde.</Card>;
@@ -699,7 +773,40 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
           </p>
         </div>
       </Card>
+
+      {activeCard ? (
+        <Card className="rounded-3xl p-6 border-2 border-accent bg-accent/5 animate-scale-in">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-accent">
+              <Zap className="h-4 w-4" /> Aktionskarte · alle mitmachen
+            </div>
+            <div className="flex items-center gap-1 text-sm font-mono tabular-nums" style={{ color: remaining <= 10 ? "hsl(var(--destructive))" : undefined }}>
+              <TimerIcon className="h-4 w-4" />
+              {String(Math.floor(remaining / 60)).padStart(1, "0")}:{String(remaining % 60).padStart(2, "0")}
+            </div>
+          </div>
+          <h3 className="mt-3 font-display text-2xl">{activeCard.title}</h3>
+          <p className="mt-2 text-base">{activeCard.content}</p>
+          {activeCard.explanation && (
+            <p className="mt-3 text-sm text-muted-foreground italic">{activeCard.explanation}</p>
+          )}
+          {isHost && (
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" size="sm" onClick={onClearAction}>Aktion beenden</Button>
+            </div>
+          )}
+        </Card>
+      ) : isHost && actionCards.length > 0 ? (
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={onDrawAction} className="h-10">
+            <Zap className="h-4 w-4 mr-2" /> Aktionskarte ziehen (60 Sek.)
+          </Button>
+        </div>
+      ) : null}
+
       {isHost && (
+
+
         <div className="flex flex-col items-center gap-2">
           <div className="flex justify-center gap-3">
             {index > 0 && (
@@ -943,8 +1050,9 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
 }
 
 // ===== Final Results =====
-function FinalResults({ players, biases, assignments }: {
+function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias }: {
   players: PlayerRow[]; biases: BiasRow[]; assignments: AssignmentRow[];
+  sessionId: string; myPlayerId: string | null; myBias: BiasRow | null;
 }) {
   const ranked = [...players].sort((a, b) => b.score - a.score);
   const top = ranked[0]?.score ?? 0;
@@ -981,7 +1089,96 @@ function FinalResults({ players, biases, assignments }: {
           })}
         </ul>
       </Card>
+
+      {myPlayerId && myBias && (
+        <ReflectionJournal sessionId={sessionId} playerId={myPlayerId} myBias={myBias} />
+      )}
+
       <Link to="/"><Button size="lg" variant="outline" className="h-12">Zur Startseite</Button></Link>
     </div>
+  );
+}
+
+// ===== Reflection Journal =====
+function ReflectionJournal({ sessionId, playerId, myBias }: {
+  sessionId: string; playerId: string; myBias: BiasRow;
+}) {
+  const [content, setContent] = useState("");
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("reflection_journals" as never)
+        .select("content, updated_at")
+        .eq("session_id", sessionId)
+        .eq("player_id", playerId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        setContent((data as { content: string }).content ?? "");
+        setSavedAt((data as { updated_at: string }).updated_at ?? null);
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [sessionId, playerId]);
+
+  async function save() {
+    setSaving(true);
+    const { error } = await supabase
+      .from("reflection_journals" as never)
+      .upsert(
+        { session_id: sessionId, player_id: playerId, content, updated_at: new Date().toISOString() } as never,
+        { onConflict: "session_id,player_id" },
+      );
+    setSaving(false);
+    if (error) { toast.error("Konnte Reflexion nicht speichern."); return; }
+    setSavedAt(new Date().toISOString());
+    toast.success("Reflexion gespeichert");
+  }
+
+  const prompts = [
+    `Welche deiner Entscheidungen heute könnten von deinem Bias (${myBias.name}) beeinflusst worden sein?`,
+    "In welchem Moment hast du gemerkt, dass du den Bias aktiv ausgespielt hast — oder ihm widerstanden hast?",
+    "Was nimmst du für echte Recruiting-Situationen mit?",
+  ];
+
+  return (
+    <Card className="rounded-3xl p-6 text-left" style={{ borderColor: myBias.color, borderWidth: 2 }}>
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em]" style={{ color: myBias.color }}>
+        <BookOpen className="h-4 w-4" /> Reflexions-Journal
+      </div>
+      <h2 className="mt-2 font-display text-2xl">Deine persönliche Auswertung</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Nimm dir 5 Minuten. Diese Notizen sind nur für dich — sie verlassen den Spielraum nicht.
+      </p>
+      <ul className="mt-4 space-y-2 text-sm">
+        {prompts.map((p, i) => (
+          <li key={i} className="flex gap-2">
+            <span className="font-display text-base" style={{ color: myBias.color }}>{i + 1}.</span>
+            <span>{p}</span>
+          </li>
+        ))}
+      </ul>
+      <Textarea
+        className="mt-4 min-h-[180px]"
+        placeholder={loading ? "Lädt…" : "Schreibe hier deine Gedanken…"}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        disabled={loading}
+      />
+      <div className="mt-3 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          {savedAt ? `Gespeichert: ${new Date(savedAt).toLocaleTimeString()}` : "Noch nicht gespeichert"}
+        </span>
+        <Button onClick={save} disabled={saving || loading || content.trim().length === 0}>
+          {saving ? "Speichert…" : "Reflexion speichern"}
+        </Button>
+      </div>
+    </Card>
   );
 }
