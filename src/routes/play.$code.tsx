@@ -855,8 +855,7 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
   const elapsed = startMs ? Math.max(0, Math.floor((nowTick - startMs) / 1000)) : 0;
   const remaining = Math.max(0, ACTION_CARD_SECONDS - elapsed);
 
-  const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
-  const c = roundCandidates[index];
+  const c = candidates[index];
 
   // Auto-draw a mandatory action card once per candidate (host only)
   const drawnKeyRef = useRef<string | null>(null);
