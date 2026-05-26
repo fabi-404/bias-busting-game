@@ -422,6 +422,7 @@ function Play() {
                   nowTick={nowTick}
                   onDrawAction={drawActionCard}
                   onClearAction={clearActionCard}
+                  myPlayerId={myPlayerId}
                 />
 
                 {myPlayerId && (
