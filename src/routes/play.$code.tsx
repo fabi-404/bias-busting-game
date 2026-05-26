@@ -777,18 +777,7 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
       ) : null}
 
       {isHost && (
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex justify-center gap-3">
-            {index > 0 && (
-              <Button size="lg" variant="outline" onClick={onPrev} className="h-12">
-                <ChevronLeft className="h-4 w-4 mr-1" /> Zurück
-              </Button>
-            )}
-            <Button size="lg" onClick={onNext} disabled={!canAdvance} className="h-12">
-              {index + 1 >= roundCandidates.length ? "Zur Abstimmung" : "Nächste:r Bewerber:in"}
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
+
 
         <div className="flex flex-col items-center gap-2">
           <div className="flex justify-center gap-3">
