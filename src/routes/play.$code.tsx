@@ -711,10 +711,21 @@ function CandidateCard({ c }: { c: CandidateRow }) {
   );
 }
 
-function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext, onPrev }: {
+const ACTION_CARD_SECONDS = 60;
+
+function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext, onPrev,
+  actionCards, currentActionCardId, actionCardStartedAt, nowTick, onDrawAction, onClearAction }: {
   candidates: CandidateRow[]; round: number; index: number;
   isHost: boolean; canAdvance: boolean; onNext: () => void; onPrev: () => void;
+  actionCards: ActionCardRow[]; currentActionCardId: string | null;
+  actionCardStartedAt: string | null; nowTick: number;
+  onDrawAction: () => void; onClearAction: () => void;
 }) {
+  const activeCard = currentActionCardId ? actionCards.find((c) => c.id === currentActionCardId) ?? null : null;
+  const startMs = actionCardStartedAt ? new Date(actionCardStartedAt).getTime() : null;
+  const elapsed = startMs ? Math.max(0, Math.floor((nowTick - startMs) / 1000)) : 0;
+  const remaining = Math.max(0, ACTION_CARD_SECONDS - elapsed);
+
   const roundCandidates = candidates.filter((c) => c.round_number === round).sort((a, b) => a.position - b.position);
   const c = roundCandidates[index];
   if (!c) return <Card className="rounded-3xl p-10 text-center text-muted-foreground">Keine Bewerber für diese Runde.</Card>;
