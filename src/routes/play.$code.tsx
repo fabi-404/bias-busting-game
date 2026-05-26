@@ -68,6 +68,7 @@ function Play() {
   const [answers, setAnswers] = useState<QuestionAnswerRow[]>([]);
   const [votes, setVotes] = useState<CandidateVoteRow[]>([]);
   const [guesses, setGuesses] = useState<BiasGuessRow[]>([]);
+  const [prevotes, setPrevotes] = useState<CandidatePrevoteRow[]>([]);
   const [readyRows, setReadyRows] = useState<ReadyRow[]>([]);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
