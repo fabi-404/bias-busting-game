@@ -161,37 +161,49 @@ export function PlayPage() {
   async function startGame() {
     if (!session || !isHost) return;
     if (biases.length === 0) { toast.error("Keine Bias-Typen vorhanden."); return; }
+    try {
+      const shuffledBiases = [...biases].sort(() => Math.random() - 0.5);
+      const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+      const rows = shuffledPlayers.map((p, i) => ({
+        player_id: p.id,
+        bias_id: shuffledBiases[i % shuffledBiases.length].id,
+      }));
 
-    const shuffledBiases = [...biases].sort(() => Math.random() - 0.5);
-    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
-    const rows = shuffledPlayers.map((p, i) => ({
-      player_id: p.id,
-      bias_id: shuffledBiases[i % shuffledBiases.length].id,
-    }));
+      const newAssignments = await api.assignBiases(session.id, rows);
+      setAssignments(newAssignments as AssignmentRow[]);
 
-    await api.assignBiases(session.id, rows);
+      const pool = candidates.filter((c) => c.round_number === 1);
+      const selected = [...pool].sort(() => Math.random() - 0.5).slice(0, 3).map((c) => c.id);
 
-    const pool = candidates.filter((c) => c.round_number === 1);
-    const selected = [...pool].sort(() => Math.random() - 0.5).slice(0, 3).map((c) => c.id);
-
-    await api.updateSession(session.id, {
-      phase: "phase1_knowledge",
-      status: "playing",
-      current_round: 1,
-      current_question_index: 0,
-      current_candidate_index: 0,
-      phase_started_at: new Date().toISOString(),
-      selected_candidate_ids: selected,
-    });
+      const updated = await api.updateSession(session.id, {
+        phase: "phase1_knowledge",
+        status: "playing",
+        current_round: 1,
+        current_question_index: 0,
+        current_candidate_index: 0,
+        phase_started_at: new Date().toISOString(),
+        selected_candidate_ids: selected,
+      });
+      setSession(updated);
+    } catch (e) {
+      console.error(e);
+      toast.error("Spiel konnte nicht gestartet werden.");
+    }
   }
 
   async function setPhase(phase: GamePhase, extra: Partial<SessionRow> = {}) {
     if (!session || !isHost) return;
-    await api.updateSession(session.id, {
-      phase,
-      phase_started_at: new Date().toISOString(),
-      ...extra,
-    });
+    try {
+      const updated = await api.updateSession(session.id, {
+        phase,
+        phase_started_at: new Date().toISOString(),
+        ...extra,
+      });
+      setSession(updated);
+    } catch (e) {
+      console.error(e);
+      toast.error("Phase konnte nicht gewechselt werden.");
+    }
   }
 
   async function nextQuestion() {
@@ -200,10 +212,16 @@ export function PlayPage() {
     if (next >= 3) {
       await setPhase("phase3_candidates", { current_candidate_index: 0 });
     } else {
-      await api.updateSession(session.id, {
-        current_question_index: next,
-        phase_started_at: new Date().toISOString(),
-      });
+      try {
+        const updated = await api.updateSession(session.id, {
+          current_question_index: next,
+          phase_started_at: new Date().toISOString(),
+        });
+        setSession(updated);
+      } catch (e) {
+        console.error(e);
+        toast.error("Nächste Frage konnte nicht geladen werden.");
+      }
     }
   }
 
@@ -213,38 +231,62 @@ export function PlayPage() {
     if (next >= selectedCandidates.length) {
       await setPhase("phase4_hire_vote");
     } else {
-      await api.updateSession(session.id, {
-        current_candidate_index: next,
-        current_action_card_id: null,
-        action_card_started_at: null,
-        phase_started_at: new Date().toISOString(),
-      });
+      try {
+        const updated = await api.updateSession(session.id, {
+          current_candidate_index: next,
+          current_action_card_id: null,
+          action_card_started_at: null,
+          phase_started_at: new Date().toISOString(),
+        });
+        setSession(updated);
+      } catch (e) {
+        console.error(e);
+        toast.error("Nächste:r Bewerber:in konnte nicht geladen werden.");
+      }
     }
   }
 
   async function prevCandidate() {
     if (!session || !isHost || session.current_candidate_index <= 0) return;
-    await api.updateSession(session.id, {
-      current_candidate_index: session.current_candidate_index - 1,
-      phase_started_at: new Date().toISOString(),
-    });
+    try {
+      const updated = await api.updateSession(session.id, {
+        current_candidate_index: session.current_candidate_index - 1,
+        phase_started_at: new Date().toISOString(),
+      });
+      setSession(updated);
+    } catch (e) {
+      console.error(e);
+      toast.error("Fehler beim Zurücknavigieren.");
+    }
   }
 
   async function drawActionCard() {
     if (!session || !isHost || actionCards.length === 0) return;
     const pick = actionCards[Math.floor(Math.random() * actionCards.length)];
-    await api.updateSession(session.id, {
-      current_action_card_id: pick.id,
-      action_card_started_at: new Date().toISOString(),
-    });
+    try {
+      const updated = await api.updateSession(session.id, {
+        current_action_card_id: pick.id,
+        action_card_started_at: new Date().toISOString(),
+      });
+      setSession(updated);
+    } catch (e) {
+      console.error(e);
+      toast.error("Aktionskarte konnte nicht gezogen werden.");
+    }
   }
 
   async function clearActionCard() {
     if (!session || !isHost) return;
-    await api.updateSession(session.id, {
-      current_action_card_id: null,
-      action_card_started_at: null,
-    });
+    try {
+      const updated = await api.updateSession(session.id, {
+        current_action_card_id: null,
+        action_card_started_at: null,
+      });
+      setSession(updated);
+    } catch (e) {
+      console.error(e);
+      toast.error("Aktionskarte konnte nicht entfernt werden.");
+    }
   }
 
   async function nextRound() {
@@ -252,12 +294,18 @@ export function PlayPage() {
     if (session.current_round >= TOTAL_ROUNDS) {
       await setPhase("final_results", { status: "ended" } as Partial<SessionRow>);
     } else {
-      await api.updateSession(session.id, {
-        phase: "phase3_candidates",
-        current_round: session.current_round + 1,
-        current_candidate_index: 0,
-        phase_started_at: new Date().toISOString(),
-      });
+      try {
+        const updated = await api.updateSession(session.id, {
+          phase: "phase3_candidates",
+          current_round: session.current_round + 1,
+          current_candidate_index: 0,
+          phase_started_at: new Date().toISOString(),
+        });
+        setSession(updated);
+      } catch (e) {
+        console.error(e);
+        toast.error("Nächste Runde konnte nicht gestartet werden.");
+      }
     }
   }
 
