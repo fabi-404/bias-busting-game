@@ -1058,9 +1058,11 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
           {activeCard.explanation && (
             <p className="mt-3 text-sm text-muted-foreground italic">{activeCard.explanation}</p>
           )}
-          {isHost && remaining === 0 && (
+          {isHost && (
             <div className="mt-4 flex justify-end">
-              <Button variant="outline" size="sm" onClick={onClearAction}>Aktion beenden</Button>
+              <Button variant="outline" size="sm" onClick={onClearAction}>
+                {remaining === 0 ? "Aktion beenden" : "Aktionskarte überspringen"}
+              </Button>
             </div>
           )}
         </Card>
