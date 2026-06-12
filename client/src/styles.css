@@ -1,0 +1,160 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-knowledge: var(--knowledge);
+  --color-knowledge-foreground: var(--knowledge-foreground);
+  --color-truefalse: var(--truefalse);
+  --color-truefalse-foreground: var(--truefalse-foreground);
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-foreground);
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 1rem;
+  --background: oklch(0.975 0.012 80);
+  --foreground: oklch(0.24 0.04 200);
+  --card: oklch(0.99 0.008 80);
+  --card-foreground: oklch(0.24 0.04 200);
+  --popover: oklch(0.99 0.008 80);
+  --popover-foreground: oklch(0.24 0.04 200);
+  --primary: oklch(0.52 0.09 195);
+  --primary-foreground: oklch(0.98 0.01 80);
+  --secondary: oklch(0.93 0.025 75);
+  --secondary-foreground: oklch(0.28 0.04 200);
+  --muted: oklch(0.94 0.018 80);
+  --muted-foreground: oklch(0.48 0.025 210);
+  --accent: oklch(0.72 0.16 35);
+  --accent-foreground: oklch(0.98 0.01 80);
+  --destructive: oklch(0.6 0.22 27);
+  --destructive-foreground: oklch(0.98 0.01 80);
+  --border: oklch(0.88 0.02 80);
+  --input: oklch(0.9 0.02 80);
+  --ring: oklch(0.52 0.09 195);
+  --knowledge: oklch(0.52 0.09 195);
+  --knowledge-foreground: oklch(0.98 0.01 80);
+  --truefalse: oklch(0.72 0.16 35);
+  --truefalse-foreground: oklch(0.99 0.01 80);
+  --action: oklch(0.68 0.13 75);
+  --action-foreground: oklch(0.2 0.03 80);
+}
+
+.dark {
+  --background: oklch(0.18 0.025 210);
+  --foreground: oklch(0.96 0.015 80);
+  --card: oklch(0.22 0.03 210);
+  --card-foreground: oklch(0.96 0.015 80);
+  --popover: oklch(0.22 0.03 210);
+  --popover-foreground: oklch(0.96 0.015 80);
+  --primary: oklch(0.7 0.11 195);
+  --primary-foreground: oklch(0.18 0.025 210);
+  --secondary: oklch(0.28 0.03 210);
+  --secondary-foreground: oklch(0.96 0.015 80);
+  --muted: oklch(0.26 0.03 210);
+  --muted-foreground: oklch(0.7 0.025 210);
+  --accent: oklch(0.72 0.16 35);
+  --accent-foreground: oklch(0.18 0.025 210);
+  --destructive: oklch(0.7 0.2 25);
+  --destructive-foreground: oklch(0.98 0.01 80);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.7 0.11 195);
+  --knowledge: oklch(0.6 0.11 195);
+  --knowledge-foreground: oklch(0.99 0.01 80);
+  --truefalse: oklch(0.72 0.16 35);
+  --truefalse-foreground: oklch(0.99 0.01 80);
+  --action: oklch(0.72 0.13 75);
+  --action-foreground: oklch(0.18 0.025 210);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body { font-family: var(--font-sans); }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    background-image:
+      radial-gradient(at 12% 0%, color-mix(in oklab, var(--color-accent) 14%, transparent) 0px, transparent 50%),
+      radial-gradient(at 88% 100%, color-mix(in oklab, var(--color-primary) 14%, transparent) 0px, transparent 55%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ===== Gamification: Konfetti & Podium ===== */
+.confetti-piece {
+  position: absolute;
+  top: -16px;
+  border-radius: 2px;
+  opacity: 0;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.podium-rise {
+  opacity: 0;
+  animation: podium-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes podium-rise {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
