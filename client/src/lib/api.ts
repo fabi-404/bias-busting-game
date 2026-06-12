@@ -50,10 +50,10 @@ export const api = {
     }),
 
   submitAnswer: (sessionId: string, player_id: string, question_id: string, answer: boolean) =>
-    request(`/sessions/${sessionId}/answers`, {
-      method: "POST",
-      body: JSON.stringify({ player_id, question_id, answer }),
-    }),
+    request<import("./bias-game").QuestionAnswerRow & { points_awarded: number }>(
+      `/sessions/${sessionId}/answers`,
+      { method: "POST", body: JSON.stringify({ player_id, question_id, answer }) },
+    ),
 
   submitVote: (sessionId: string, player_id: string, round_number: number, candidate_id: string) =>
     request(`/sessions/${sessionId}/votes`, {
@@ -80,6 +80,11 @@ export const api = {
     request<{ ok: boolean; correct: number }>(`/sessions/${sessionId}/guesses`, {
       method: "POST",
       body: JSON.stringify({ guesses }),
+    }),
+
+  finalizeSession: (sessionId: string) =>
+    request<import("./bias-game").AchievementRow[]>(`/sessions/${sessionId}/finalize`, {
+      method: "POST",
     }),
 
   markReady: (sessionId: string, player_id: string, phase_key: string) =>

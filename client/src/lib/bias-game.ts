@@ -126,6 +126,42 @@ export interface ReadyRow {
   phase_key: string;
 }
 
+export interface AchievementRow {
+  id: string;
+  session_id: string;
+  player_id: string;
+  achievement_key: string;
+  bonus_points: number;
+}
+
+export const ACHIEVEMENT_META: Record<string, { label: string; description: string; emoji: string }> = {
+  quiz_master: {
+    label: "Quiz-Profi",
+    description: "Alle Wissensfragen richtig beantwortet (+1 Punkt)",
+    emoji: "🧠",
+  },
+  bias_detective: {
+    label: "Bias-Detektiv:in",
+    description: "Alle Bias-Tipps richtig getippt (+1 Punkt)",
+    emoji: "🕵️",
+  },
+  undercover: {
+    label: "Undercover",
+    description: "Niemand hat deinen Bias erraten (+2 Punkte)",
+    emoji: "🎭",
+  },
+  team_compass: {
+    label: "Teamgespür",
+    description: "Deine Stimme entsprach der finalen Einstellung",
+    emoji: "🧭",
+  },
+  chat_champion: {
+    label: "Diskussionsfreudig",
+    description: "Die meisten Beiträge in der Diskussion",
+    emoji: "💬",
+  },
+};
+
 export interface ChatMessage {
   id: string;
   session_id: string;
@@ -165,6 +201,7 @@ export interface FullSessionData {
   ready: ReadyRow[];
   actionCards: ActionCardRow[];
   prevotes: CandidatePrevoteRow[];
+  achievements: AchievementRow[];
 }
 
 export const TOTAL_ROUNDS = 1;

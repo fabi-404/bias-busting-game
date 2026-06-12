@@ -47,7 +47,7 @@ sessionsRouter.get("/:code", async (req, res) => {
   if (!sessions.length) return res.status(404).json({ error: "Session not found" });
   const session = sessions[0];
 
-  const [players, biases, questions, candidates, assignments, answers, votes, guesses, ready, actionCards, prevotes] =
+  const [players, biases, questions, candidates, assignments, answers, votes, guesses, ready, actionCards, prevotes, achievements] =
     await Promise.all([
       pool.query("SELECT id, name, score, is_host FROM session_players WHERE session_id = $1 ORDER BY joined_at", [session.id]),
       pool.query("SELECT * FROM biases ORDER BY name"),
@@ -60,6 +60,7 @@ sessionsRouter.get("/:code", async (req, res) => {
       pool.query("SELECT player_id, phase_key FROM session_phase_ready WHERE session_id = $1", [session.id]),
       pool.query("SELECT id, title, content, explanation, category FROM cards WHERE type = 'action'"),
       pool.query("SELECT * FROM candidate_prevotes WHERE session_id = $1", [session.id]),
+      pool.query("SELECT * FROM player_achievements WHERE session_id = $1", [session.id]),
     ]);
 
   res.json({
@@ -75,6 +76,7 @@ sessionsRouter.get("/:code", async (req, res) => {
     ready: ready.rows,
     actionCards: actionCards.rows,
     prevotes: prevotes.rows,
+    achievements: achievements.rows,
   });
 });
 
