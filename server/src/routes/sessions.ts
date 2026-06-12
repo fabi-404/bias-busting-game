@@ -49,7 +49,7 @@ sessionsRouter.get("/:code", async (req, res) => {
 
   const [players, biases, questions, candidates, assignments, answers, votes, guesses, ready, actionCards, prevotes, achievements] =
     await Promise.all([
-      pool.query("SELECT id, name, score, is_host FROM session_players WHERE session_id = $1 ORDER BY joined_at", [session.id]),
+      pool.query("SELECT id, name, score, is_host, avatar FROM session_players WHERE session_id = $1 ORDER BY joined_at", [session.id]),
       pool.query("SELECT * FROM biases ORDER BY name"),
       pool.query("SELECT * FROM bias_questions ORDER BY position"),
       pool.query("SELECT * FROM candidates ORDER BY round_number, position"),
@@ -89,7 +89,7 @@ sessionsRouter.patch("/:id", async (req, res) => {
     "phase", "status", "current_round", "current_candidate_index",
     "current_question_index", "phase_started_at", "selected_candidate_ids",
     "current_action_card_id", "action_card_started_at",
-    "phase_duration_seconds", "anonymous_voting",
+    "phase_duration_seconds", "anonymous_voting", "total_rounds",
   ];
 
   const fields = Object.keys(updates).filter((k) => allowed.includes(k));

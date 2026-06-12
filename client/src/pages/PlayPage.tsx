@@ -14,6 +14,7 @@ import {
   ArrowLeft, Copy, Crown, Sparkles, Users, Brain, HelpCircle,
   UserCheck, Vote, Eye, Trophy, Check, X, ChevronRight, ChevronLeft,
   BookOpen, ExternalLink, Zap, Timer as TimerIcon, Star, BarChart3,
+  Volume2, VolumeX, AlertTriangle, ShieldCheck,
 } from "lucide-react";
 
 import {
@@ -21,8 +22,9 @@ import {
   type CandidateRow, type AssignmentRow, type QuestionAnswerRow,
   type CandidateVoteRow, type BiasGuessRow, type GamePhase, type ActionCardRow,
   type CandidatePrevoteRow, type ReadyRow, type AchievementRow,
-  TOTAL_ROUNDS, phaseLabel, ACHIEVEMENT_META,
+  phaseLabel, ACHIEVEMENT_META,
 } from "@/lib/bias-game";
+import { isMuted, setMuted, playCorrect, playWrong, playFanfare } from "@/lib/sounds";
 
 import { ChatPanel } from "@/components/ChatPanel";
 import { PhaseStatusBar, PHASE_DURATION_SECONDS } from "@/components/PhaseStatusBar";
@@ -66,6 +68,22 @@ export function PlayPage() {
   const [readyRows, setReadyRows] = useState<ReadyRow[]>([]);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
+  const [muted, setMutedState] = useState(() => isMuted());
+
+  function toggleMute() {
+    const next = !muted;
+    setMuted(next);
+    setMutedState(next);
+  }
+
+  // Fanfare beim Erreichen der Endauswertung
+  const fanfarePlayedRef = useRef(false);
+  useEffect(() => {
+    if (session?.phase === "final_results" && !fanfarePlayedRef.current) {
+      fanfarePlayedRef.current = true;
+      playFanfare();
+    }
+  }, [session?.phase]);
 
   useEffect(() => {
     const t = setInterval(() => setNowTick(Date.now()), 1000);
@@ -293,31 +311,38 @@ export function PlayPage() {
     }
   }
 
-  async function nextRound() {
+  async function startNextRound() {
     if (!session || !isHost) return;
-    if (session.current_round >= TOTAL_ROUNDS) {
-      try {
-        const rows = await api.finalizeSession(session.id);
-        setAchievements(rows);
-      } catch (e) {
-        console.error(e);
-        toast.error("Auszeichnungen konnten nicht berechnet werden.");
-      }
-      await setPhase("final_results", { status: "ended" } as Partial<SessionRow>);
-    } else {
-      try {
-        const updated = await api.updateSession(session.id, {
-          phase: "phase3_candidates",
-          current_round: session.current_round + 1,
-          current_candidate_index: 0,
-          phase_started_at: new Date().toISOString(),
-        });
-        setSession(updated);
-      } catch (e) {
-        console.error(e);
-        toast.error("Nächste Runde konnte nicht gestartet werden.");
-      }
+    const next = session.current_round + 1;
+    const roundPool = candidates.filter((c) => c.round_number === next);
+    const selected = [...roundPool].sort(() => Math.random() - 0.5).slice(0, 3).map((c) => c.id);
+    try {
+      const updated = await api.updateSession(session.id, {
+        phase: "phase3_candidates",
+        current_round: next,
+        current_candidate_index: 0,
+        current_action_card_id: null,
+        action_card_started_at: null,
+        selected_candidate_ids: selected,
+        phase_started_at: new Date().toISOString(),
+      });
+      setSession(updated);
+    } catch (e) {
+      console.error(e);
+      toast.error("Nächste Runde konnte nicht gestartet werden.");
     }
+  }
+
+  async function finishGame() {
+    if (!session || !isHost) return;
+    try {
+      const rows = await api.finalizeSession(session.id);
+      setAchievements(rows);
+    } catch (e) {
+      console.error(e);
+      toast.error("Auszeichnungen konnten nicht berechnet werden.");
+    }
+    await setPhase("final_results", { status: "ended" } as Partial<SessionRow>);
   }
 
   // ===== Player actions =====
@@ -325,6 +350,7 @@ export function PlayPage() {
     if (!session || !myPlayerId) return;
     try {
       const result = await api.submitAnswer(session.id, myPlayerId, questionId, answer);
+      if (result.points_awarded > 0) playCorrect(); else playWrong();
       if (result.points_awarded === 2) {
         toast.success("⚡ Blitzschnell! +2 Punkte (Schnell-Bonus)");
       } else if (result.points_awarded === 1) {
@@ -408,8 +434,15 @@ export function PlayPage() {
           </Link>
           <div className="flex items-center gap-3">
             <Badge variant="secondary" className="font-mono">
-              Runde {Math.max(1, session.current_round)} / {TOTAL_ROUNDS}
+              Runde {Math.max(1, session.current_round)} / {session.total_rounds}
             </Badge>
+            <button
+              onClick={toggleMute}
+              className="grid h-9 w-9 place-items-center rounded-full bg-card border border-border hover:border-accent transition"
+              title={muted ? "Ton einschalten" : "Ton ausschalten"}
+            >
+              {muted ? <VolumeX className="h-4 w-4 text-muted-foreground" /> : <Volume2 className="h-4 w-4 text-accent" />}
+            </button>
             <button onClick={copyShare} className="inline-flex items-center gap-2 rounded-full bg-card border border-border px-4 py-2 text-sm hover:border-accent transition">
               <span className="font-display text-lg tracking-[0.3em] text-accent">{code}</span>
               <Copy className="h-3.5 w-3.5 text-muted-foreground" />
@@ -443,6 +476,7 @@ export function PlayPage() {
                 onStart={startGame}
                 phaseDuration={phaseDuration}
                 anonymousVoting={session.anonymous_voting ?? true}
+                totalRounds={session.total_rounds}
                 onUpdateSettings={async (patch) => {
                   await api.updateSession(session.id, patch);
                 }}
@@ -511,6 +545,7 @@ export function PlayPage() {
                       phase={session.phase}
                       round={session.current_round}
                       title="Live-Chat zur Diskussion"
+                      players={players}
                     />
                   )}
                 </>
@@ -527,10 +562,27 @@ export function PlayPage() {
                 isHost={isHost}
                 canAdvance={canAdvance}
                 onVote={submitCandidateVote}
-                onNext={() => setPhase("phase5_bias_guess")}
+                onNext={() => setPhase("round_results")}
                 sessionId={session.id}
                 myName={identity?.name ?? ""}
                 anonymous={session.anonymous_voting ?? true}
+              />
+            )}
+
+            {session.phase === "round_results" && (
+              <RoundResults
+                candidates={selectedCandidates}
+                votes={votes}
+                players={players}
+                biases={biases}
+                assignments={assignments}
+                prevotes={prevotes}
+                round={session.current_round}
+                isHost={isHost}
+                isLastRound={session.current_round >= session.total_rounds}
+                canAdvance={canAdvance}
+                onNextRound={startNextRound}
+                onGoToBiasGuess={() => setPhase("phase5_bias_guess")}
               />
             )}
 
@@ -545,8 +597,8 @@ export function PlayPage() {
                 isHost={isHost}
                 canAdvance={canAdvance}
                 onSubmit={submitBiasGuesses}
-                onNext={nextRound}
-                isLastRound={session.current_round >= TOTAL_ROUNDS}
+                onNext={finishGame}
+                isLastRound={true}
                 sessionId={session.id}
                 myName={identity?.name ?? ""}
               />
@@ -561,7 +613,8 @@ export function PlayPage() {
                 myPlayerId={myPlayerId}
                 myBias={myBias}
                 candidates={candidates}
-                selectedCandidates={selectedCandidates}
+                votes={votes}
+                totalRounds={session.total_rounds}
                 prevotes={prevotes}
                 achievements={achievements}
               />
@@ -605,8 +658,9 @@ function PlayerSidebar({ players, myPlayerId, myBias, phase }: {
             )}>
               <span className="flex items-center gap-2 text-sm">
                 {rank < 3 && p.score > 0 && <span className="text-sm leading-none">{["🥇", "🥈", "🥉"][rank]}</span>}
+                <span>{p.avatar}</span>
                 {p.is_host && <Crown className="h-3.5 w-3.5 text-accent" />}
-                <span className="truncate max-w-[140px]">{p.name}</span>
+                <span className="truncate max-w-[120px]">{p.name}</span>
               </span>
               <span className="font-display text-lg">{p.score}</span>
             </li>
@@ -618,9 +672,9 @@ function PlayerSidebar({ players, myPlayerId, myBias, phase }: {
 }
 
 // ===== Lobby =====
-function LobbyView({ code, isHost, players, onStart, phaseDuration, anonymousVoting, onUpdateSettings }: {
+function LobbyView({ code, isHost, players, onStart, phaseDuration, anonymousVoting, totalRounds, onUpdateSettings }: {
   code: string; isHost: boolean; players: PlayerRow[]; onStart: () => void;
-  phaseDuration: number; anonymousVoting: boolean;
+  phaseDuration: number; anonymousVoting: boolean; totalRounds: number;
   onUpdateSettings: (patch: Partial<SessionRow>) => Promise<void>;
 }) {
   const [rulesOpen, setRulesOpen] = useState(true);
@@ -657,9 +711,12 @@ function LobbyView({ code, isHost, players, onStart, phaseDuration, anonymousVot
                 <li><b className="text-foreground">Wissenskarte</b> — Du erhältst geheim einen Bias zugewiesen.</li>
                 <li><b className="text-foreground">Wissensfragen</b> — Wahr/Falsch zu deinem Bias (Punkte).</li>
                 <li><b className="text-foreground">Bewerber:innen</b> — Drei Profile, jeweils still 1–5 Sterne bewerten, dann diskutieren.</li>
-                <li><b className="text-foreground">Einstellung</b> — Gemeinsam abstimmen, wer den Job bekommt.</li>
-                <li><b className="text-foreground">Bias raten</b> — Welcher Bias wurde wem zugeordnet? Jeder Treffer = Punkt.</li>
+                <li><b className="text-foreground">Einstellung</b> — Gemeinsam abstimmen, wer den Job bekommt. Danach wird aufgedeckt, ob ihr in eine <b className="text-foreground">Bias-Falle</b> getappt seid!</li>
+                <li><b className="text-foreground">Bias raten</b> — Nach der letzten Runde: Welcher Bias wurde wem zugeordnet? Jeder Treffer = Punkt.</li>
               </ol>
+              <p className="text-muted-foreground mt-2 text-xs">
+                Phase 3–4 wiederholen sich pro Runde mit neuen Bewerber:innen.
+              </p>
             </div>
             <div>
               <div className="text-xs uppercase tracking-[0.2em] text-accent mb-1">Punkte sammeln</div>
@@ -708,6 +765,31 @@ function LobbyView({ code, isHost, players, onStart, phaseDuration, anonymousVot
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="pt-2 border-t border-border/40">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium">Runden</label>
+                <span className="font-display text-lg">{totalRounds}</span>
+              </div>
+              <div className="flex gap-2">
+                {[1, 2, 3].map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => onUpdateSettings({ total_rounds: r })}
+                    className={cn(
+                      "flex-1 rounded-xl border-2 py-2 text-sm font-medium transition",
+                      r === totalRounds
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-border hover:border-accent/50",
+                    )}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Pro Runde: 3 neue Bewerber:innen, Abstimmung und Bias-Falle-Auswertung.
+              </p>
             </div>
             <div className="flex items-start justify-between gap-4 pt-2 border-t border-border/40">
               <div className="flex-1">
@@ -1074,7 +1156,7 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
               {!anonymous && voters.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1">
                   {voters.map((v) => (
-                    <span key={v.id} className="inline-flex items-center rounded-full bg-accent/15 px-2 py-0.5 text-[10px] text-accent">{v.name}</span>
+                    <span key={v.id} className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] text-accent">{v.avatar} {v.name}</span>
                   ))}
                 </div>
               )}
@@ -1092,7 +1174,7 @@ function Phase4HireVote({ candidates, round, votes, players, myPlayerId, isHost,
       <div className="text-center text-sm text-muted-foreground">{roundVotes.length} / {players.length} abgestimmt</div>
 
       <ChatPanel sessionId={sessionId} myPlayerId={myPlayerId} myName={myName}
-        phase="phase4_hire_vote" round={round} title="Diskussion · Wer wird eingestellt?" />
+        phase="phase4_hire_vote" round={round} title="Diskussion · Wer wird eingestellt?" players={players} />
 
       {isHost && (
         <div className="flex flex-col items-center gap-2">
@@ -1154,7 +1236,7 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
           return (
             <Card key={p.id} className="rounded-2xl p-4">
               <div className="flex items-center justify-between mb-3">
-                <div className="font-display text-lg">{p.name}</div>
+                <div className="font-display text-lg"><span className="mr-1.5">{p.avatar}</span>{p.name}</div>
                 {alreadySubmitted && myGuess && (
                   <Badge variant={myGuess.is_correct ? "default" : "destructive"}>
                     {myGuess.is_correct ? "Richtig!" : "Falsch"}
@@ -1186,7 +1268,7 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
       </div>
 
       <ChatPanel sessionId={sessionId} myPlayerId={myPlayerId} myName={myName}
-        phase="phase5_bias_guess" round={round} title="Diskussion · Bias raten" />
+        phase="phase5_bias_guess" round={round} title="Diskussion · Bias raten" players={players} />
 
       {!alreadySubmitted && (
         <div className="flex justify-center">
@@ -1214,16 +1296,134 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
   );
 }
 
+// ===== Runden-Auswertung mit Bias-Falle-Reveal =====
+function roundWinner(candidates: CandidateRow[], votes: CandidateVoteRow[], round: number): CandidateRow | null {
+  const tally: Record<string, number> = {};
+  for (const v of votes.filter((x) => x.round_number === round)) {
+    tally[v.candidate_id] = (tally[v.candidate_id] ?? 0) + 1;
+  }
+  const winnerId = Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0];
+  return candidates.find((c) => c.id === winnerId) ?? null;
+}
+
+function RoundResults({ candidates, votes, players, biases, assignments, prevotes, round, isHost, isLastRound, canAdvance, onNextRound, onGoToBiasGuess }: {
+  candidates: CandidateRow[]; votes: CandidateVoteRow[]; players: PlayerRow[];
+  biases: BiasRow[]; assignments: AssignmentRow[]; prevotes: CandidatePrevoteRow[];
+  round: number; isHost: boolean; isLastRound: boolean; canAdvance: boolean;
+  onNextRound: () => void; onGoToBiasGuess: () => void;
+}) {
+  const winner = roundWinner(candidates, votes, round);
+  const trapBias = winner?.appeals_to_bias_id
+    ? biases.find((b) => b.id === winner.appeals_to_bias_id) ?? null
+    : null;
+
+  // Aggregierter Bewertungs-Vergleich: erst ab 2 Träger:innen, sonst wäre die Person enttarnt
+  let carrierAvg: number | null = null;
+  let otherAvg: number | null = null;
+  if (winner && trapBias) {
+    const carrierIds = new Set(assignments.filter((a) => a.bias_id === trapBias.id).map((a) => a.player_id));
+    const winnerPrevotes = prevotes.filter((pv) => pv.candidate_id === winner.id);
+    const carrierRatings = winnerPrevotes.filter((pv) => carrierIds.has(pv.player_id)).map((pv) => pv.rating);
+    const otherRatings = winnerPrevotes.filter((pv) => !carrierIds.has(pv.player_id)).map((pv) => pv.rating);
+    if (carrierRatings.length >= 2 && otherRatings.length > 0) {
+      carrierAvg = carrierRatings.reduce((s, r) => s + r, 0) / carrierRatings.length;
+      otherAvg = otherRatings.reduce((s, r) => s + r, 0) / otherRatings.length;
+    }
+  }
+
+  const ranked = [...players].sort((a, b) => b.score - a.score);
+
+  return (
+    <div className="space-y-4">
+      <Card className="rounded-3xl p-6 text-center">
+        <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-[0.2em] text-accent">
+          <UserCheck className="h-4 w-4" /> Rundenauswertung · Runde {round}
+        </div>
+        {winner ? (
+          <>
+            <h2 className="mt-3 font-display text-3xl">Eingestellt: {winner.name}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{winner.headline}</p>
+          </>
+        ) : (
+          <h2 className="mt-3 font-display text-2xl text-muted-foreground">Keine Stimmen abgegeben.</h2>
+        )}
+      </Card>
+
+      {winner && (
+        trapBias ? (
+          <Card className="rounded-3xl p-6 border-2" style={{ borderColor: trapBias.color, background: `${trapBias.color}12` }}>
+            <div className="flex items-center gap-2 font-display text-2xl" style={{ color: trapBias.color }}>
+              <AlertTriangle className="h-6 w-6" /> 🚨 In die Bias-Falle getappt!
+            </div>
+            <p className="mt-3 text-sm leading-relaxed">
+              <b>{winner.name}</b> war als Köder für den{" "}
+              <b style={{ color: trapBias.color }}>{trapBias.name}</b> angelegt:{" "}
+              {trapBias.short_description}
+            </p>
+            {carrierAvg !== null && otherAvg !== null && (
+              <div className="mt-4 rounded-2xl bg-background/60 p-4 text-sm">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                  Stille Bewertungen im Vergleich
+                </div>
+                Spieler:innen mit diesem Bias: <b>ø {carrierAvg.toFixed(1)} ★</b> · alle anderen:{" "}
+                <b>ø {otherAvg.toFixed(1)} ★</b>
+                {carrierAvg > otherAvg && " — der Bias hat sichtbar mitgespielt!"}
+              </div>
+            )}
+          </Card>
+        ) : (
+          <Card className="rounded-3xl p-6 border-2 border-green-500 bg-green-500/10">
+            <div className="flex items-center gap-2 font-display text-2xl text-green-600">
+              <ShieldCheck className="h-6 w-6" /> ✅ Falle umgangen!
+            </div>
+            <p className="mt-3 text-sm leading-relaxed">
+              <b>{winner.name}</b> war keiner Bias-Falle zugeordnet — eine neutrale, faire Wahl.
+            </p>
+          </Card>
+        )
+      )}
+
+      <Card className="rounded-3xl p-6">
+        <div className="font-display text-xl mb-3">Zwischenstand</div>
+        <ul className="space-y-2">
+          {ranked.map((p, rank) => (
+            <li key={p.id} className="flex items-center justify-between rounded-xl bg-muted/40 px-4 py-2.5">
+              <span className="flex items-center gap-2 text-sm">
+                {rank < 3 && p.score > 0 && <span>{["🥇", "🥈", "🥉"][rank]}</span>}
+                <span>{p.avatar}</span>
+                <span className="truncate max-w-[180px]">{p.name}</span>
+              </span>
+              <span className="font-display text-lg">{p.score}</span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      {isHost && (
+        <div className="flex flex-col items-center gap-2">
+          <Button size="lg" onClick={isLastRound ? onGoToBiasGuess : onNextRound} disabled={!canAdvance} className="h-12">
+            {isLastRound ? "Weiter zu Bias raten" : "Nächste Runde starten"}
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+          {!canAdvance && <p className="text-xs text-muted-foreground">Warte bis alle bereit sind oder der Timer abläuft.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ===== Final Results =====
-function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias, candidates, selectedCandidates, prevotes, achievements }: {
+function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias, candidates, votes, totalRounds, prevotes, achievements }: {
   players: PlayerRow[]; biases: BiasRow[]; assignments: AssignmentRow[];
   sessionId: string; myPlayerId: string | null; myBias: BiasRow | null;
-  candidates: CandidateRow[]; selectedCandidates: CandidateRow[]; prevotes: CandidatePrevoteRow[];
-  achievements: AchievementRow[];
+  candidates: CandidateRow[]; votes: CandidateVoteRow[]; totalRounds: number;
+  prevotes: CandidatePrevoteRow[]; achievements: AchievementRow[];
 }) {
   const ranked = [...players].sort((a, b) => b.score - a.score);
   const top = ranked[0]?.score ?? 0;
   const winners = ranked.filter((p) => p.score === top && top > 0);
+  // Heatmap über alle Kandidat:innen, die in irgendeiner Runde bewertet wurden
+  const seenCandidates = candidates.filter((c) => prevotes.some((pv) => pv.candidate_id === c.id));
   return (
     <div className="space-y-6 text-center">
       <Confetti />
@@ -1246,6 +1446,7 @@ function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myB
               <li key={p.id} className="rounded-xl bg-muted/40 px-4 py-3">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
+                    <span>{p.avatar}</span>
                     {p.is_host && <Crown className="h-3.5 w-3.5 text-accent" />}
                     <span>{p.name}</span>
                   </span>
@@ -1273,9 +1474,11 @@ function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myB
         </ul>
       </Card>
 
+      <TrapSummary candidates={candidates} votes={votes} biases={biases} totalRounds={totalRounds} />
+
       <AchievementsCard achievements={achievements} players={players} />
 
-      <BiasHeatmap players={players} candidates={selectedCandidates} biases={biases} prevotes={prevotes} assignments={assignments} />
+      <BiasHeatmap players={players} candidates={seenCandidates} biases={biases} prevotes={prevotes} assignments={assignments} />
 
       {myPlayerId && myBias && (
         <ReflectionJournal sessionId={sessionId} playerId={myPlayerId} myBias={myBias} />
@@ -1283,6 +1486,57 @@ function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myB
 
       <Link to="/"><Button size="lg" variant="outline" className="h-12">Zur Startseite</Button></Link>
     </div>
+  );
+}
+
+// ===== Fallen-Bilanz =====
+function TrapSummary({ candidates, votes, biases, totalRounds }: {
+  candidates: CandidateRow[]; votes: CandidateVoteRow[]; biases: BiasRow[]; totalRounds: number;
+}) {
+  const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1)
+    .map((round) => {
+      const winner = roundWinner(candidates, votes, round);
+      if (!winner) return null;
+      const trapBias = winner.appeals_to_bias_id
+        ? biases.find((b) => b.id === winner.appeals_to_bias_id) ?? null
+        : null;
+      return { round, winner, trapBias };
+    })
+    .filter((r): r is { round: number; winner: CandidateRow; trapBias: BiasRow | null } => !!r);
+  if (rounds.length === 0) return null;
+
+  const trapped = rounds.filter((r) => r.trapBias).length;
+
+  return (
+    <Card className="rounded-3xl p-6 text-left">
+      <div className="flex items-center gap-2 mb-1">
+        <AlertTriangle className="h-5 w-5 text-accent" />
+        <div className="font-display text-xl">Fallen-Bilanz</div>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        {trapped === 0
+          ? "Stark! Ihr seid in keine einzige Bias-Falle getappt."
+          : `Ihr seid in ${trapped} von ${rounds.length} Runden in eine Bias-Falle getappt.`}
+      </p>
+      <ul className="space-y-2">
+        {rounds.map(({ round, winner, trapBias }) => (
+          <li key={round} className="flex items-center justify-between rounded-xl bg-muted/40 px-4 py-3 gap-3">
+            <span className="text-xs text-muted-foreground shrink-0">Runde {round}</span>
+            <span className="flex-1 text-sm truncate">{winner.name}</span>
+            {trapBias ? (
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0"
+                style={{ background: `${trapBias.color}20`, color: trapBias.color }}>
+                🚨 {trapBias.name}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-600 shrink-0">
+                ✅ vermieden
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
 
@@ -1305,6 +1559,7 @@ function Podium({ ranked }: { ranked: PlayerRow[] }) {
         return (
           <div key={p.id} className="flex flex-col items-center w-28 sm:w-36 podium-rise" style={{ animationDelay: `${(2 - rank) * 0.25}s` }}>
             <span className="text-3xl mb-1">{["🥇", "🥈", "🥉"][rank]}</span>
+            <span className="text-3xl mb-1">{p.avatar}</span>
             <span className="text-sm font-medium truncate max-w-full">{p.name}</span>
             <span className="font-display text-xl mb-2" style={{ color: MEDAL_COLORS[rank] }}>{p.score} Pkt.</span>
             <div className={cn("w-full rounded-t-2xl grid place-items-start justify-center pt-2", heightFor(p))}

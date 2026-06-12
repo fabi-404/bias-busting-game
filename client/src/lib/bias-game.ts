@@ -32,6 +32,7 @@ export interface PlayerRow {
   name: string;
   score: number;
   is_host: boolean;
+  avatar: string;
 }
 
 export interface BiasRow {
@@ -204,7 +205,15 @@ export interface FullSessionData {
   achievements: AchievementRow[];
 }
 
-export const TOTAL_ROUNDS = 1;
+export const AVATAR_CHOICES = [
+  "🦊", "🐼", "🦁", "🐙", "🦉", "🐸", "🦄", "🐯",
+  "🐨", "🐧", "🦋", "🐢", "🦜", "🐳", "🦔", "🐝",
+  "🦩", "🐲", "🦥", "🐰", "🦈", "🐞", "🦚", "🐬",
+];
+
+export function randomAvatar(): string {
+  return AVATAR_CHOICES[Math.floor(Math.random() * AVATAR_CHOICES.length)];
+}
 
 export function phaseLabel(phase: GamePhase): string {
   switch (phase) {
