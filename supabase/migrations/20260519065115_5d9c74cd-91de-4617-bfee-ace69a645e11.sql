@@ -1,1 +1,0 @@
-ALTER TABLE public.game_sessions ADD COLUMN IF NOT EXISTS total_rounds integer NOT NULL DEFAULT 10;
