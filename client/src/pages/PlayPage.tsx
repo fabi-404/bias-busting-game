@@ -959,9 +959,11 @@ function Phase3Candidates({ candidates, round, index, isHost, canAdvance, onNext
           <h3 className="mt-3 font-display text-2xl">{activeCard.title}</h3>
           <p className="mt-2 text-base">{activeCard.content}</p>
           {activeCard.explanation && <p className="mt-3 text-sm text-muted-foreground italic">{activeCard.explanation}</p>}
-          {isHost && remaining === 0 && (
+          {isHost && (
             <div className="mt-4 flex justify-end">
-              <Button variant="outline" size="sm" onClick={onClearAction}>Aktion beenden</Button>
+              <Button variant="outline" size="sm" onClick={onClearAction}>
+                {remaining === 0 ? "Aktion beenden" : "Aktionskarte überspringen"}
+              </Button>
             </div>
           )}
         </Card>
