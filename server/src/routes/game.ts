@@ -73,7 +73,7 @@ gameRouter.post("/:id/answers", async (req, res) => {
       [points_awarded, player_id],
     );
     const updated = await pool.query(
-      "SELECT id, name, score, is_host FROM session_players WHERE session_id = $1 ORDER BY joined_at",
+      "SELECT id, name, score, is_host, avatar FROM session_players WHERE session_id = $1 ORDER BY joined_at",
       [id],
     );
     io.to(id).emit("players:updated", updated.rows);
@@ -175,7 +175,7 @@ gameRouter.post("/:id/guesses", async (req, res) => {
         [players[0].score + correctCount, guesses[0].guesser_player_id],
       );
       const updated = await pool.query(
-        "SELECT id, name, score, is_host FROM session_players WHERE session_id = $1 ORDER BY joined_at",
+        "SELECT id, name, score, is_host, avatar FROM session_players WHERE session_id = $1 ORDER BY joined_at",
         [id],
       );
       io.to(id).emit("players:updated", updated.rows);
@@ -303,7 +303,7 @@ gameRouter.post("/:id/finalize", async (req, res) => {
     [id],
   );
   const updated = await pool.query(
-    "SELECT id, name, score, is_host FROM session_players WHERE session_id = $1 ORDER BY joined_at",
+    "SELECT id, name, score, is_host, avatar FROM session_players WHERE session_id = $1 ORDER BY joined_at",
     [id],
   );
   io.to(id).emit("players:updated", updated.rows);

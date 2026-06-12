@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { setIdentity } from "@/lib/game-storage";
+import { randomAvatar } from "@/lib/bias-game";
+import { AvatarPicker } from "@/components/AvatarPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -13,6 +15,7 @@ export function JoinPage() {
   const [searchParams] = useSearchParams();
   const [code, setCode] = useState((searchParams.get("code") ?? "").toUpperCase());
   const [name, setName] = useState("");
+  const [avatar, setAvatar] = useState(() => randomAvatar());
   const [loading, setLoading] = useState(false);
 
   async function join() {
@@ -25,7 +28,7 @@ export function JoinPage() {
       const sessionData = await api.getSession(c);
       if (!sessionData) return toast.error("Spielraum nicht gefunden.");
 
-      const player = await api.joinSession(sessionData.session.id, name.trim(), false);
+      const player = await api.joinSession(sessionData.session.id, name.trim(), false, avatar);
 
       setIdentity(c, {
         kind: "player",
@@ -68,6 +71,7 @@ export function JoinPage() {
               className="h-12"
               onKeyDown={(e) => e.key === "Enter" && join()}
             />
+            <AvatarPicker value={avatar} onChange={setAvatar} />
             <Button onClick={join} disabled={loading} size="lg" className="w-full h-12">
               {loading ? "…" : "Beitreten"}
             </Button>

@@ -115,6 +115,7 @@ CREATE TABLE session_players (
   name TEXT NOT NULL,
   score INTEGER NOT NULL DEFAULT 0,
   is_host BOOLEAN NOT NULL DEFAULT false,
+  avatar TEXT NOT NULL DEFAULT '🙂',
   joined_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

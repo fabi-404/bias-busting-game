@@ -30,10 +30,10 @@ export const api = {
     }),
 
   // ===== Players =====
-  joinSession: (sessionId: string, name: string, is_host = false) =>
-    request<{ id: string; player_token: string; name: string; score: number; is_host: boolean }>(
+  joinSession: (sessionId: string, name: string, is_host = false, avatar = "🙂") =>
+    request<{ id: string; player_token: string; name: string; score: number; is_host: boolean; avatar: string }>(
       `/sessions/${sessionId}/players`,
-      { method: "POST", body: JSON.stringify({ name, is_host }) },
+      { method: "POST", body: JSON.stringify({ name, is_host, avatar }) },
     ),
 
   updatePlayerScore: (sessionId: string, playerId: string, score: number) =>

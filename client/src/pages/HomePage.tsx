@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { setIdentity } from "@/lib/game-storage";
+import { randomAvatar } from "@/lib/bias-game";
+import { AvatarPicker } from "@/components/AvatarPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -11,6 +13,7 @@ import { Sparkles, Users, Settings } from "lucide-react";
 export function HomePage() {
   const navigate = useNavigate();
   const [hostName, setHostName] = useState("");
+  const [avatar, setAvatar] = useState(() => randomAvatar());
   const [loading, setLoading] = useState(false);
 
   async function createSession() {
@@ -20,9 +23,9 @@ export function HomePage() {
     }
     setLoading(true);
     try {
-      const { id, code, host_token } = await api.createSession(hostName.trim(), 1);
+      const { id, code, host_token } = await api.createSession(hostName.trim(), 3);
 
-      const player = await api.joinSession(id, hostName.trim(), true);
+      const player = await api.joinSession(id, hostName.trim(), true, avatar);
 
       setIdentity(code, {
         kind: "host",
@@ -64,23 +67,26 @@ export function HomePage() {
           <p className="text-sm text-muted-foreground mb-5">
             Du bist Host. Du steuerst die Phasen — die anderen treten mit dem Code bei.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Input
-              placeholder="Dein Name"
-              value={hostName}
-              onChange={(e) => setHostName(e.target.value)}
-              maxLength={40}
-              className="h-12 text-base"
-              onKeyDown={(e) => e.key === "Enter" && createSession()}
-            />
-            <Button
-              onClick={createSession}
-              disabled={loading}
-              size="lg"
-              className="h-12 px-6"
-            >
-              {loading ? "…" : "Raum öffnen"}
-            </Button>
+          <div className="space-y-4">
+            <AvatarPicker value={avatar} onChange={setAvatar} />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Input
+                placeholder="Dein Name"
+                value={hostName}
+                onChange={(e) => setHostName(e.target.value)}
+                maxLength={40}
+                className="h-12 text-base"
+                onKeyDown={(e) => e.key === "Enter" && createSession()}
+              />
+              <Button
+                onClick={createSession}
+                disabled={loading}
+                size="lg"
+                className="h-12 px-6"
+              >
+                {loading ? "…" : "Raum öffnen"}
+              </Button>
+            </div>
           </div>
         </Card>
 
