@@ -218,6 +218,18 @@ CREATE TABLE reflection_journals (
 CREATE TRIGGER reflection_journals_touch BEFORE UPDATE ON reflection_journals
   FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
 
+CREATE TABLE player_achievements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID NOT NULL REFERENCES game_sessions(id) ON DELETE CASCADE,
+  player_id UUID NOT NULL REFERENCES session_players(id) ON DELETE CASCADE,
+  achievement_key TEXT NOT NULL,
+  bonus_points INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (session_id, player_id, achievement_key)
+);
+
+CREATE INDEX player_achievements_session_idx ON player_achievements(session_id);
+
 -- ============================================================
 -- SEED: Biases
 -- ============================================================

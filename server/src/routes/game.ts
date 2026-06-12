@@ -4,6 +4,9 @@ import { io } from "../index.js";
 
 export const gameRouter = Router();
 
+const SPEED_BONUS_WINDOW_MS = 15_000;
+const QUESTIONS_PER_PLAYER = 3;
+
 // POST /api/sessions/:id/assignments — Biases zuordnen (Host)
 gameRouter.post("/:id/assignments", async (req, res) => {
   const { id } = req.params;
@@ -44,6 +47,17 @@ gameRouter.post("/:id/answers", async (req, res) => {
   if (!questions.length) return res.status(404).json({ error: "Question not found" });
   const is_correct = questions[0].correct_answer === answer;
 
+  // Schnell-Bonus: richtige Antwort innerhalb von 15s nach Fragenstart = 2 Punkte
+  const { rows: sessions } = await pool.query(
+    "SELECT phase_started_at FROM game_sessions WHERE id = $1",
+    [id],
+  );
+  const startedAt = sessions[0]?.phase_started_at
+    ? new Date(sessions[0].phase_started_at).getTime()
+    : null;
+  const isFast = startedAt !== null && Date.now() - startedAt <= SPEED_BONUS_WINDOW_MS;
+  const points_awarded = is_correct ? (isFast ? 2 : 1) : 0;
+
   const { rows } = await pool.query(
     `INSERT INTO bias_question_answers (session_id, player_id, question_id, answer, is_correct)
      VALUES ($1, $2, $3, $4, $5)
@@ -53,22 +67,16 @@ gameRouter.post("/:id/answers", async (req, res) => {
     [id, player_id, question_id, answer, is_correct],
   );
 
-  if (is_correct) {
-    const { rows: players } = await pool.query(
-      "SELECT score FROM session_players WHERE id = $1",
-      [player_id],
+  if (points_awarded > 0) {
+    await pool.query(
+      "UPDATE session_players SET score = score + $1 WHERE id = $2",
+      [points_awarded, player_id],
     );
-    if (players.length) {
-      await pool.query(
-        "UPDATE session_players SET score = $1 WHERE id = $2",
-        [players[0].score + 1, player_id],
-      );
-      const updated = await pool.query(
-        "SELECT id, name, score, is_host FROM session_players WHERE session_id = $1 ORDER BY joined_at",
-        [id],
-      );
-      io.to(id).emit("players:updated", updated.rows);
-    }
+    const updated = await pool.query(
+      "SELECT id, name, score, is_host FROM session_players WHERE session_id = $1 ORDER BY joined_at",
+      [id],
+    );
+    io.to(id).emit("players:updated", updated.rows);
   }
 
   const allAnswers = await pool.query(
@@ -76,7 +84,7 @@ gameRouter.post("/:id/answers", async (req, res) => {
     [id],
   );
   io.to(id).emit("answers:updated", allAnswers.rows);
-  res.json(rows[0]);
+  res.json({ ...rows[0], points_awarded });
 });
 
 // POST /api/sessions/:id/votes — Kandidaten-Abstimmung
@@ -215,6 +223,92 @@ gameRouter.post("/:id/reflection", async (req, res) => {
     [id, player_id, content ?? ""],
   );
   res.json(rows[0]);
+});
+
+// POST /api/sessions/:id/finalize — Auszeichnungen & Bonuspunkte berechnen (Host, einmalig)
+gameRouter.post("/:id/finalize", async (req, res) => {
+  const { id } = req.params;
+
+  const existing = await pool.query(
+    "SELECT * FROM player_achievements WHERE session_id = $1",
+    [id],
+  );
+  if (existing.rows.length > 0) return res.json(existing.rows);
+
+  const [playersQ, answersQ, guessesQ, votesQ, chatQ] = await Promise.all([
+    pool.query("SELECT id FROM session_players WHERE session_id = $1", [id]),
+    pool.query("SELECT player_id, is_correct FROM bias_question_answers WHERE session_id = $1", [id]),
+    pool.query("SELECT guesser_player_id, target_player_id, is_correct FROM bias_guesses WHERE session_id = $1", [id]),
+    pool.query("SELECT player_id, candidate_id, round_number FROM candidate_votes WHERE session_id = $1", [id]),
+    pool.query("SELECT player_id, COUNT(*)::int AS cnt FROM chat_messages WHERE session_id = $1 GROUP BY player_id", [id]),
+  ]);
+
+  const players = playersQ.rows as { id: string }[];
+  const awards: { player_id: string; key: string; bonus: number }[] = [];
+
+  for (const p of players) {
+    const myAnswers = answersQ.rows.filter((a) => a.player_id === p.id);
+    if (myAnswers.length >= QUESTIONS_PER_PLAYER && myAnswers.every((a) => a.is_correct)) {
+      awards.push({ player_id: p.id, key: "quiz_master", bonus: 1 });
+    }
+
+    const myGuesses = guessesQ.rows.filter((g) => g.guesser_player_id === p.id);
+    if (players.length > 1 && myGuesses.length >= players.length - 1 && myGuesses.every((g) => g.is_correct)) {
+      awards.push({ player_id: p.id, key: "bias_detective", bonus: 1 });
+    }
+
+    const guessesAboutMe = guessesQ.rows.filter((g) => g.target_player_id === p.id);
+    if (guessesAboutMe.length > 0 && guessesAboutMe.every((g) => !g.is_correct)) {
+      awards.push({ player_id: p.id, key: "undercover", bonus: 2 });
+    }
+  }
+
+  // Teamgespür: eigene Stimme entsprach der eingestellten Person (letzte Runde, nur bei eindeutigem Ergebnis)
+  const lastRound = votesQ.rows.reduce((m, v) => Math.max(m, v.round_number), 0);
+  const lastVotes = votesQ.rows.filter((v) => v.round_number === lastRound);
+  const tally = new Map<string, number>();
+  for (const v of lastVotes) tally.set(v.candidate_id, (tally.get(v.candidate_id) ?? 0) + 1);
+  const sorted = [...tally.entries()].sort((a, b) => b[1] - a[1]);
+  if (sorted.length > 0 && (sorted.length === 1 || sorted[0][1] > sorted[1][1])) {
+    for (const v of lastVotes.filter((v) => v.candidate_id === sorted[0][0])) {
+      awards.push({ player_id: v.player_id, key: "team_compass", bonus: 0 });
+    }
+  }
+
+  // Diskussionsfreudig: meiste Chat-Beiträge (mindestens 3)
+  const maxChat = chatQ.rows.reduce((m, r) => Math.max(m, r.cnt), 0);
+  if (maxChat >= 3) {
+    for (const r of chatQ.rows.filter((r) => r.cnt === maxChat)) {
+      awards.push({ player_id: r.player_id, key: "chat_champion", bonus: 0 });
+    }
+  }
+
+  for (const a of awards) {
+    await pool.query(
+      `INSERT INTO player_achievements (session_id, player_id, achievement_key, bonus_points)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (session_id, player_id, achievement_key) DO NOTHING`,
+      [id, a.player_id, a.key, a.bonus],
+    );
+    if (a.bonus > 0) {
+      await pool.query(
+        "UPDATE session_players SET score = score + $1 WHERE id = $2",
+        [a.bonus, a.player_id],
+      );
+    }
+  }
+
+  const { rows: achievements } = await pool.query(
+    "SELECT * FROM player_achievements WHERE session_id = $1",
+    [id],
+  );
+  const updated = await pool.query(
+    "SELECT id, name, score, is_host FROM session_players WHERE session_id = $1 ORDER BY joined_at",
+    [id],
+  );
+  io.to(id).emit("players:updated", updated.rows);
+  io.to(id).emit("achievements:updated", achievements);
+  res.json(achievements);
 });
 
 // GET /api/sessions/:id/reflection/:playerId

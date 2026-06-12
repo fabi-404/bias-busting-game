@@ -20,8 +20,8 @@ import {
   type SessionRow, type PlayerRow, type BiasRow, type BiasQuestionRow,
   type CandidateRow, type AssignmentRow, type QuestionAnswerRow,
   type CandidateVoteRow, type BiasGuessRow, type GamePhase, type ActionCardRow,
-  type CandidatePrevoteRow, type ReadyRow,
-  TOTAL_ROUNDS, phaseLabel,
+  type CandidatePrevoteRow, type ReadyRow, type AchievementRow,
+  TOTAL_ROUNDS, phaseLabel, ACHIEVEMENT_META,
 } from "@/lib/bias-game";
 
 import { ChatPanel } from "@/components/ChatPanel";
@@ -62,6 +62,7 @@ export function PlayPage() {
   const [votes, setVotes] = useState<CandidateVoteRow[]>([]);
   const [guesses, setGuesses] = useState<BiasGuessRow[]>([]);
   const [prevotes, setPrevotes] = useState<CandidatePrevoteRow[]>([]);
+  const [achievements, setAchievements] = useState<AchievementRow[]>([]);
   const [readyRows, setReadyRows] = useState<ReadyRow[]>([]);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
@@ -120,6 +121,7 @@ export function PlayPage() {
       setGuesses(data.guesses);
       setReadyRows(data.ready);
       setPrevotes(data.prevotes);
+      setAchievements(data.achievements ?? []);
 
       // Join Socket.io room
       joinRoom(data.session.id);
@@ -142,6 +144,7 @@ export function PlayPage() {
     socket.on("votes:updated", (v: CandidateVoteRow[]) => setVotes(v));
     socket.on("prevotes:updated", (p: CandidatePrevoteRow[]) => setPrevotes(p));
     socket.on("guesses:updated", (g: BiasGuessRow[]) => setGuesses(g));
+    socket.on("achievements:updated", (a: AchievementRow[]) => setAchievements(a));
     socket.on("ready:updated", (r: ReadyRow[]) => setReadyRows(r));
 
     return () => {
@@ -152,6 +155,7 @@ export function PlayPage() {
       socket.off("votes:updated");
       socket.off("prevotes:updated");
       socket.off("guesses:updated");
+      socket.off("achievements:updated");
       socket.off("ready:updated");
       if (session?.id) leaveRoom(session.id);
     };
@@ -292,6 +296,13 @@ export function PlayPage() {
   async function nextRound() {
     if (!session || !isHost) return;
     if (session.current_round >= TOTAL_ROUNDS) {
+      try {
+        const rows = await api.finalizeSession(session.id);
+        setAchievements(rows);
+      } catch (e) {
+        console.error(e);
+        toast.error("Auszeichnungen konnten nicht berechnet werden.");
+      }
       await setPhase("final_results", { status: "ended" } as Partial<SessionRow>);
     } else {
       try {
@@ -313,7 +324,12 @@ export function PlayPage() {
   async function submitAnswer(questionId: string, answer: boolean) {
     if (!session || !myPlayerId) return;
     try {
-      await api.submitAnswer(session.id, myPlayerId, questionId, answer);
+      const result = await api.submitAnswer(session.id, myPlayerId, questionId, answer);
+      if (result.points_awarded === 2) {
+        toast.success("⚡ Blitzschnell! +2 Punkte (Schnell-Bonus)");
+      } else if (result.points_awarded === 1) {
+        toast.success("Richtig! +1 Punkt");
+      }
     } catch {
       toast.error("Antwort konnte nicht gespeichert werden.");
     }
@@ -547,6 +563,7 @@ export function PlayPage() {
                 candidates={candidates}
                 selectedCandidates={selectedCandidates}
                 prevotes={prevotes}
+                achievements={achievements}
               />
             )}
           </div>
@@ -581,12 +598,13 @@ function PlayerSidebar({ players, myPlayerId, myBias, phase }: {
         <div className="font-display text-lg mb-3">Spieler:innen</div>
         <ul className="space-y-2">
           {players.length === 0 && <li className="text-sm text-muted-foreground">Noch niemand da.</li>}
-          {[...players].sort((a, b) => b.score - a.score).map((p) => (
+          {[...players].sort((a, b) => b.score - a.score).map((p, rank) => (
             <li key={p.id} className={cn(
               "flex items-center justify-between rounded-xl px-3 py-2",
               myPlayerId === p.id ? "bg-primary/10" : "bg-muted/40",
             )}>
               <span className="flex items-center gap-2 text-sm">
+                {rank < 3 && p.score > 0 && <span className="text-sm leading-none">{["🥇", "🥈", "🥉"][rank]}</span>}
                 {p.is_host && <Crown className="h-3.5 w-3.5 text-accent" />}
                 <span className="truncate max-w-[140px]">{p.name}</span>
               </span>
@@ -642,6 +660,16 @@ function LobbyView({ code, isHost, players, onStart, phaseDuration, anonymousVot
                 <li><b className="text-foreground">Einstellung</b> — Gemeinsam abstimmen, wer den Job bekommt.</li>
                 <li><b className="text-foreground">Bias raten</b> — Welcher Bias wurde wem zugeordnet? Jeder Treffer = Punkt.</li>
               </ol>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-accent mb-1">Punkte sammeln</div>
+              <ul className="space-y-1 text-muted-foreground">
+                <li>✅ Richtige Wissensfrage: <b className="text-foreground">+1 Punkt</b></li>
+                <li>⚡ Antwort in unter 15 Sekunden: <b className="text-foreground">+2 Punkte</b></li>
+                <li>🕵️ Richtiger Bias-Tipp: <b className="text-foreground">+1 Punkt</b></li>
+                <li>🎭 Niemand errät deinen Bias: <b className="text-foreground">+2 Punkte</b> (Undercover-Bonus)</li>
+                <li>🏅 Am Ende warten Auszeichnungen wie <b className="text-foreground">Quiz-Profi</b> und <b className="text-foreground">Bias-Detektiv:in</b>.</li>
+              </ul>
             </div>
             <div>
               <div className="text-xs uppercase tracking-[0.2em] text-accent mb-1">Wichtig</div>
@@ -799,6 +827,9 @@ function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHos
     <div className="space-y-4">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>Frage {qIndex + 1} von 3 · zu deiner Bias</span>
+        <span className="inline-flex items-center gap-1 text-accent font-medium">
+          <Zap className="h-3.5 w-3.5" /> Unter 15 Sek. = +2 Punkte
+        </span>
         <span>{playersDone} / {players.length} fertig</span>
       </div>
       <Card key={q.id} className="rounded-3xl p-8" style={{ borderColor: myBias.color, borderWidth: 2 }}>
@@ -821,7 +852,7 @@ function Phase2Questions({ myBias, myPlayerId, questions, answers, qIndex, isHos
             <div className="flex items-center gap-2 font-display text-xl">
               {myAnswer.is_correct ? <Check className="h-5 w-5 text-green-600" /> : <X className="h-5 w-5 text-red-600" />}
               Deine Antwort: {myAnswer.answer ? "Wahr" : "Falsch"} —
-              {myAnswer.is_correct ? " richtig (+1 Pkt.)" : " leider falsch"}
+              {myAnswer.is_correct ? " richtig!" : " leider falsch"}
             </div>
             <p className="mt-3 text-sm">{q.explanation}</p>
           </div>
@@ -1184,40 +1215,65 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
 }
 
 // ===== Final Results =====
-function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias, candidates, selectedCandidates, prevotes }: {
+function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myBias, candidates, selectedCandidates, prevotes, achievements }: {
   players: PlayerRow[]; biases: BiasRow[]; assignments: AssignmentRow[];
   sessionId: string; myPlayerId: string | null; myBias: BiasRow | null;
   candidates: CandidateRow[]; selectedCandidates: CandidateRow[]; prevotes: CandidatePrevoteRow[];
+  achievements: AchievementRow[];
 }) {
   const ranked = [...players].sort((a, b) => b.score - a.score);
   const top = ranked[0]?.score ?? 0;
   const winners = ranked.filter((p) => p.score === top && top > 0);
   return (
     <div className="space-y-6 text-center">
+      <Confetti />
       <Trophy className="mx-auto h-12 w-12 text-accent" />
       <h1 className="font-display text-5xl">Endauswertung</h1>
       {winners.length > 0 && (
         <div className="font-display text-3xl text-accent">Sieg: {winners.map((w) => w.name).join(" & ")} ({top} Pkt.)</div>
       )}
+
+      <Podium ranked={ranked} />
+
       <Card className="rounded-3xl p-6 text-left">
         <div className="font-display text-xl mb-4">Bias-Aufdeckung</div>
         <ul className="space-y-2">
           {players.map((p) => {
             const a = assignments.find((x) => x.player_id === p.id);
             const b = a ? biases.find((y) => y.id === a.bias_id) : null;
+            const myAwards = achievements.filter((aw) => aw.player_id === p.id);
             return (
-              <li key={p.id} className="flex items-center justify-between rounded-xl bg-muted/40 px-4 py-3">
-                <span className="flex items-center gap-2">
-                  {p.is_host && <Crown className="h-3.5 w-3.5 text-accent" />}
-                  <span>{p.name}</span>
-                </span>
-                {b && <span className="font-display text-sm" style={{ color: b.color }}>{b.name}</span>}
-                <span className="font-display text-lg w-12 text-right">{p.score}</span>
+              <li key={p.id} className="rounded-xl bg-muted/40 px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    {p.is_host && <Crown className="h-3.5 w-3.5 text-accent" />}
+                    <span>{p.name}</span>
+                  </span>
+                  {b && <span className="font-display text-sm" style={{ color: b.color }}>{b.name}</span>}
+                  <span className="font-display text-lg w-12 text-right">{p.score}</span>
+                </div>
+                {myAwards.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {myAwards.map((aw) => {
+                      const meta = ACHIEVEMENT_META[aw.achievement_key];
+                      if (!meta) return null;
+                      return (
+                        <span key={aw.id} title={meta.description}
+                          className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2.5 py-0.5 text-xs text-accent">
+                          <span>{meta.emoji}</span>{meta.label}
+                          {aw.bonus_points > 0 && <span className="font-mono">+{aw.bonus_points}</span>}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </li>
             );
           })}
         </ul>
       </Card>
+
+      <AchievementsCard achievements={achievements} players={players} />
 
       <BiasHeatmap players={players} candidates={selectedCandidates} biases={biases} prevotes={prevotes} assignments={assignments} />
 
@@ -1226,6 +1282,104 @@ function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myB
       )}
 
       <Link to="/"><Button size="lg" variant="outline" className="h-12">Zur Startseite</Button></Link>
+    </div>
+  );
+}
+
+// ===== Podium =====
+const MEDAL_COLORS = ["#fbbf24", "#94a3b8", "#b45309"];
+
+function Podium({ ranked }: { ranked: PlayerRow[] }) {
+  const top3 = ranked.slice(0, 3).filter((p) => p.score > 0);
+  if (top3.length < 2) return null;
+  // Anordnung: Platz 2 links, Platz 1 mittig, Platz 3 rechts
+  const slots = [top3[1], top3[0], top3[2]].filter((p): p is PlayerRow => !!p);
+  const heightFor = (p: PlayerRow) => {
+    const rank = top3.indexOf(p);
+    return rank === 0 ? "h-32" : rank === 1 ? "h-24" : "h-16";
+  };
+  return (
+    <div className="flex items-end justify-center gap-3 pt-6">
+      {slots.map((p) => {
+        const rank = top3.indexOf(p);
+        return (
+          <div key={p.id} className="flex flex-col items-center w-28 sm:w-36 podium-rise" style={{ animationDelay: `${(2 - rank) * 0.25}s` }}>
+            <span className="text-3xl mb-1">{["🥇", "🥈", "🥉"][rank]}</span>
+            <span className="text-sm font-medium truncate max-w-full">{p.name}</span>
+            <span className="font-display text-xl mb-2" style={{ color: MEDAL_COLORS[rank] }}>{p.score} Pkt.</span>
+            <div className={cn("w-full rounded-t-2xl grid place-items-start justify-center pt-2", heightFor(p))}
+              style={{ background: `linear-gradient(180deg, ${MEDAL_COLORS[rank]}cc, ${MEDAL_COLORS[rank]}55)` }}>
+              <span className="font-display text-2xl text-background">{rank + 1}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ===== Auszeichnungen =====
+function AchievementsCard({ achievements, players }: { achievements: AchievementRow[]; players: PlayerRow[] }) {
+  if (achievements.length === 0) return null;
+  const keys = Object.keys(ACHIEVEMENT_META).filter((k) => achievements.some((a) => a.achievement_key === k));
+  return (
+    <Card className="rounded-3xl p-6 text-left">
+      <div className="flex items-center gap-2 mb-4">
+        <Trophy className="h-5 w-5 text-accent" />
+        <div className="font-display text-xl">Auszeichnungen</div>
+      </div>
+      <ul className="space-y-3">
+        {keys.map((key) => {
+          const meta = ACHIEVEMENT_META[key];
+          const names = achievements
+            .filter((a) => a.achievement_key === key)
+            .map((a) => players.find((p) => p.id === a.player_id)?.name)
+            .filter(Boolean);
+          return (
+            <li key={key} className="flex items-start gap-3 rounded-2xl bg-muted/40 px-4 py-3">
+              <span className="text-2xl">{meta.emoji}</span>
+              <div className="flex-1">
+                <div className="font-medium">{meta.label}</div>
+                <div className="text-xs text-muted-foreground">{meta.description}</div>
+              </div>
+              <div className="text-sm text-accent text-right max-w-[40%]">{names.join(", ")}</div>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
+
+// ===== Konfetti =====
+const CONFETTI_COLORS = ["#f59e0b", "#3b82f6", "#10b981", "#ec4899", "#8b5cf6"];
+
+function Confetti() {
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: 80 }, (_, i) => ({
+        left: Math.random() * 100,
+        delay: Math.random() * 2.5,
+        duration: 3 + Math.random() * 2.5,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        size: 6 + Math.random() * 6,
+      })),
+    [],
+  );
+  return (
+    <div className="pointer-events-none fixed inset-0 overflow-hidden z-50" aria-hidden>
+      {pieces.map((p, i) => (
+        <span key={i} className="confetti-piece"
+          style={{
+            left: `${p.left}%`,
+            width: p.size,
+            height: p.size * 0.45,
+            background: p.color,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+          }}
+        />
+      ))}
     </div>
   );
 }
