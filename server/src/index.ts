@@ -35,6 +35,12 @@ app.get("/api/health", (_req, res) => {
 
 registerSocketEvents(io);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("Unhandled error:", err?.message ?? err, err?.stack);
+  res.status(500).json({ error: err?.message ?? "Internal Server Error" });
+});
+
 const PORT = Number(process.env.PORT ?? 3001);
 httpServer.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
