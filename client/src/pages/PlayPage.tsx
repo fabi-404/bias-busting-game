@@ -816,7 +816,7 @@ function LobbyView({ code, isHost, players, onStart, phaseDuration, anonymousVot
           Teilt den Code <span className="text-accent font-display tracking-[0.3em]">{code}</span> mit eurem Team.
         </p>
         <p className="text-sm text-muted-foreground mt-4">
-          {players.length} {players.length === 1 ? "Spieler:in" : "Spieler:innen"} verbunden.
+          {players.length}/5 {players.length === 1 ? "Spieler:in" : "Spieler:innen"} verbunden.
         </p>
         {isHost ? (
           <Button size="lg" onClick={onStart} className="mt-8 h-12">
