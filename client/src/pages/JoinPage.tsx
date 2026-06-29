@@ -40,7 +40,7 @@ export function JoinPage() {
       navigate(`/play/${c}`);
     } catch (e) {
       console.error(e);
-      toast.error("Beitritt fehlgeschlagen.");
+      toast.error(e instanceof Error ? e.message : "Beitritt fehlgeschlagen.");
     } finally {
       setLoading(false);
     }

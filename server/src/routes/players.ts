@@ -14,6 +14,14 @@ playersRouter.post("/:id/players", async (req, res) => {
   };
   if (!name?.trim()) return res.status(400).json({ error: "name required" });
 
+  const { rows: countRows } = await pool.query(
+    "SELECT COUNT(*) FROM session_players WHERE session_id = $1",
+    [id],
+  );
+  if (parseInt(countRows[0].count, 10) >= 5) {
+    return res.status(409).json({ error: "Raum ist voll (max. 5 Spieler:innen)." });
+  }
+
   const { rows } = await pool.query(
     `INSERT INTO session_players (session_id, name, is_host, avatar)
      VALUES ($1, $2, $3, $4)
