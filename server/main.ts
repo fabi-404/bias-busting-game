@@ -1,6 +1,13 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import cors from "cors";
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+});
 
 import { initIO } from "./src/configs/socket.config.js";
 import { registerSocketEvents } from "./src/socket/events.js";
