@@ -13,7 +13,8 @@ export class SessionRoute {
     try {
       const session = await SessionService.create(req.body);
       return res.status(201).json(session);
-    } catch {
+    } catch (e) {
+      console.error("[session:create]", e);
       return res.status(500).json({ error: "Could not create session" });
     }
   }
