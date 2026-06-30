@@ -1,5 +1,6 @@
 import { PostgreSQLConfig } from "../configs/postgreSQL.config.js";
 import { SessionQueries } from "../queries/session.queries.js";
+import { signToken } from "../utils/jwt.util.js";
 import type { CreateSessionBody, FullSessionState, Session } from "../types/game.type.js";
 
 export class SessionService {
@@ -20,7 +21,9 @@ export class SessionService {
           host_name.trim(),
           total_rounds,
         ]);
-        return rows[0];
+        const { id } = rows[0] as { id: string; code: string };
+        const host_token = signToken({ sub: id, role: "host", sessionId: id });
+        return { id, code, host_token };
       } catch {
         if (attempt === 4) throw new Error("Could not create session");
       }

@@ -18,7 +18,6 @@ export interface SessionRow {
   current_question_index: number;
   phase_started_at: string | null;
   host_name: string;
-  host_token: string;
   total_rounds: number;
   current_action_card_id: string | null;
   action_card_started_at: string | null;
