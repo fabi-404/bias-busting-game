@@ -802,7 +802,7 @@ function LobbyView({ code, isHost, players, onStart, phaseDuration, anonymousVot
                 onClick={() => onUpdateSettings({ anonymous_voting: !anonymousVoting })}
                 className={cn("relative h-7 w-12 rounded-full transition", anonymousVoting ? "bg-accent" : "bg-muted")}
               >
-                <span className={cn("absolute top-0.5 h-6 w-6 rounded-full bg-background shadow transition-transform", anonymousVoting ? "translate-x-5" : "translate-x-0.5")} />
+                <span className={cn( "absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-background shadow transition-transform", anonymousVoting ? "translate-x-5" : "translate-x-0",)}/>
               </button>
             </div>
           </div>
