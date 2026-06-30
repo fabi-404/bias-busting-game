@@ -12,6 +12,7 @@ process.on("uncaughtException", (err) => {
 import { initIO } from "./src/configs/socket.config.js";
 import { registerSocketEvents } from "./src/socket/events.js";
 import { RouterUtil } from "./src/utils/router.util.js";
+import { PostgreSQLConfig } from "./src/configs/postgreSQL.config.js";
 
 export const app = express();
 const httpServer = createServer(app);
@@ -40,4 +41,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 const PORT = Number(process.env.PORT ?? 3001);
 httpServer.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
+  PostgreSQLConfig.pool.connect()
+    .then((client) => { client.release(); console.log("[DB] Connection OK"); })
+    .catch((err) => console.error("[DB] Connection FAILED:", err));
 });
