@@ -2,7 +2,7 @@ export class SessionQueries {
   public static readonly create = `
     INSERT INTO game_sessions (code, host_name, total_rounds)
     VALUES ($1, $2, $3)
-    RETURNING id, code, host_token
+    RETURNING id, code
   `;
 
   public static readonly findByCode = `
