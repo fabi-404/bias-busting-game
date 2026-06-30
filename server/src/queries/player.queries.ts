@@ -6,7 +6,7 @@ export class PlayerQueries {
   public static readonly add = `
     INSERT INTO session_players (session_id, name, is_host, avatar)
     VALUES ($1, $2, $3, $4)
-    RETURNING id, player_token, name, score, is_host, avatar
+    RETURNING id, name, score, is_host, avatar
   `;
 
   public static readonly listBySession = `

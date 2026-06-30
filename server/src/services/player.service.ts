@@ -1,5 +1,6 @@
 import { PostgreSQLConfig } from "../configs/postgreSQL.config.js";
 import { PlayerQueries } from "../queries/player.queries.js";
+import { signToken } from "../utils/jwt.util.js";
 import type { JoinPlayerBody, PlayerPublic } from "../types/game.type.js";
 
 export class PlayerService {
@@ -23,7 +24,11 @@ export class PlayerService {
       is_host,
       (avatar || "🙂").slice(0, 8),
     ]);
-    return rows[0];
+    const { id, name: playerName, score, is_host: isHost, avatar: playerAvatar } = rows[0] as {
+      id: string; name: string; score: number; is_host: boolean; avatar: string;
+    };
+    const player_token = signToken({ sub: id, role: isHost ? "host" : "player", sessionId, playerId: id });
+    return { id, player_token, name: playerName, score, is_host: isHost, avatar: playerAvatar };
   }
 
   static async listBySession(sessionId: string): Promise<PlayerPublic[]> {

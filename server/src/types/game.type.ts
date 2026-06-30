@@ -13,7 +13,6 @@ export type GamePhase =
 export interface Session {
   id: string;
   code: string;
-  host_token: string;
   host_name: string;
   status: SessionStatus;
   phase: GamePhase;

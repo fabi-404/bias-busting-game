@@ -1,8 +1,12 @@
 const BASE = "/api";
 
+let _token: string | null = null;
+export function setApiToken(token: string | null) { _token = token; }
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const authHeader: Record<string, string> = _token ? { Authorization: `Bearer ${_token}` } : {};
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers: { "Content-Type": "application/json", ...authHeader, ...options?.headers },
     ...options,
   });
   if (!res.ok) {

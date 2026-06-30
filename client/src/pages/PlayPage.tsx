@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api } from "@/lib/api";
+import { api, setApiToken } from "@/lib/api";
 import { socket, joinRoom, leaveRoom } from "@/lib/socket";
 import { getIdentity, setIdentity } from "@/lib/game-storage";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,12 @@ export function PlayPage() {
     return () => clearInterval(t);
   }, []);
 
-  const isHost = !!identity && identity.kind === "host" && session?.host_token === identity.token;
+  useEffect(() => {
+    if (identity?.token) setApiToken(identity.token);
+    return () => setApiToken(null);
+  }, [identity?.token]);
+
+  const isHost = !!identity && identity.kind === "host";
   const myPlayerId = identity?.playerId ?? null;
 
   const myAssignment = useMemo(
