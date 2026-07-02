@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import { createServer } from "http";
+import { StatusCodes } from "http-status-codes";
 import cors from "cors";
 
 process.on("unhandledRejection", (reason) => {
@@ -35,7 +36,7 @@ registerSocketEvents(io);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error("Unhandled error:", err?.message ?? err, err?.stack);
-  res.status(500).json({ error: err?.message ?? "Internal Server Error" });
+  res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: err?.message ?? "Internal Server Error" });
 });
 
 const PORT = Number(process.env.PORT ?? 3001);

@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from "express";
+import { StatusCodes } from "http-status-codes";
 import { app } from "../../main.js";
 import { SessionRoute } from "../routes/session.route.js";
 import { PlayerRoute } from "../routes/player.route.js";
@@ -23,20 +24,20 @@ declare global {
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Unauthorized" });
+    res.status(StatusCodes.UNAUTHORIZED).json({ error: "Unauthorized" });
     return;
   }
   try {
     req.jwtPayload = verifyToken(auth.slice(7));
     next();
   } catch {
-    res.status(401).json({ error: "Invalid token" });
+    res.status(StatusCodes.UNAUTHORIZED).json({ error: "Invalid token" });
   }
 }
 
 function requireHost(req: Request, res: Response, next: NextFunction) {
   if (req.jwtPayload?.role !== "host") {
-    res.status(403).json({ error: "Forbidden" });
+    res.status(StatusCodes.FORBIDDEN).json({ error: "Forbidden" });
     return;
   }
   next();

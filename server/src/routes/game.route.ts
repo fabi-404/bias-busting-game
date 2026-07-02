@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
 import { io } from "../configs/socket.config.js";
 import { GameService } from "../services/game.service.js";
 import type {
@@ -17,7 +18,7 @@ export class GameRoute {
     res: Response,
   ) {
     const { id } = req.params;
-    if (!req.body.rows?.length) return res.status(400).json({ error: "rows required" });
+    if (!req.body.rows?.length) return res.status(StatusCodes.BAD_REQUEST).json({ error: "rows required" });
 
     const assignments = await GameService.assign(id, req.body);
     io.to(id).emit("assignments:updated", assignments);
@@ -39,7 +40,7 @@ export class GameRoute {
       return res.json(answer_row);
     } catch (e: unknown) {
       const err = e as { status?: number; message?: string };
-      return res.status(err.status ?? 500).json({ error: err.message ?? "Internal Server Error" });
+      return res.status(err.status ?? StatusCodes.INTERNAL_SERVER_ERROR).json({ error: err.message ?? "Internal Server Error" });
     }
   }
 
@@ -59,7 +60,7 @@ export class GameRoute {
 
   static async guess(req: Request<{ id: string }, object, PostGuessBody>, res: Response) {
     const { id } = req.params;
-    if (!req.body.guesses?.length) return res.status(400).json({ error: "guesses required" });
+    if (!req.body.guesses?.length) return res.status(StatusCodes.BAD_REQUEST).json({ error: "guesses required" });
 
     const { guesses, correct, players } = await GameService.guess(id, req.body);
     if (players.length) io.to(id).emit("players:updated", players);
