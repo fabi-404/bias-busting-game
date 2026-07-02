@@ -1,4 +1,4 @@
-const BASE = "/api";
+const BASE = `${import.meta.env.VITE_API_URL ?? ""}/api`;
 
 let _token: string | null = null;
 export function setApiToken(token: string | null) { _token = token; }
