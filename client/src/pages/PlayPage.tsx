@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +70,7 @@ export function PlayPage() {
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [muted, setMutedState] = useState(() => isMuted());
+  const [showBiasReview, setShowBiasReview] = useState(false);
 
   function toggleMute() {
     const next = !muted;
@@ -434,9 +436,19 @@ export function PlayPage() {
     <main className="min-h-screen px-4 py-6 sm:py-10">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Startseite
-          </Link>
+          <div className="flex items-center gap-4">
+            {myBias && session.phase !== "lobby" && (
+              <button
+                onClick={() => setShowBiasReview(true)}
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ChevronLeft className="h-4 w-4" /> Zurück
+              </button>
+            )}
+            <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground/70 hover:text-foreground">
+              <ArrowLeft className="h-3.5 w-3.5" /> Startseite
+            </Link>
+          </div>
           <div className="flex items-center gap-3">
             <Badge variant="secondary" className="font-mono">
               Runde {Math.max(1, session.current_round)} / {session.total_rounds}
@@ -634,7 +646,55 @@ export function PlayPage() {
           />
         </div>
       </div>
+
+      <Dialog open={showBiasReview} onOpenChange={setShowBiasReview}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Deine Bias nochmal nachlesen</DialogTitle>
+          </DialogHeader>
+          {myBias && <BiasReviewCard bias={myBias} />}
+        </DialogContent>
+      </Dialog>
     </main>
+  );
+}
+
+// ===== Bias Review (read-only, lokal — beeinflusst nicht den Spielstand anderer) =====
+function BiasReviewCard({ bias }: { bias: BiasRow }) {
+  return (
+    <Card className="rounded-3xl p-6 sm:p-8 shadow-xl"
+      style={{ background: `linear-gradient(135deg, ${bias.color}22, ${bias.color}08)`, borderColor: bias.color, borderWidth: 2 }}>
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em]" style={{ color: bias.color }}>
+        <Brain className="h-4 w-4" /> Wissenskarte
+      </div>
+      <h2 className="mt-4 font-display text-3xl sm:text-4xl" style={{ color: bias.color }}>{bias.name}</h2>
+      <p className="mt-3 text-base font-medium opacity-90">{bias.short_description}</p>
+      <p className="mt-6 text-base leading-relaxed">{bias.knowledge_card_text}</p>
+      {bias.example && (
+        <div className="mt-6 rounded-2xl bg-background/60 backdrop-blur p-4 border border-border/40">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">Beispiel</div>
+          <p className="text-sm">{bias.example}</p>
+        </div>
+      )}
+      {bias.self_recognition && (
+        <div className="mt-4 rounded-2xl bg-background/60 backdrop-blur p-4 border-l-4" style={{ borderColor: bias.color }}>
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] mb-1" style={{ color: bias.color }}>
+            <Eye className="h-3 w-3" /> Wie erkennst du ihn in dir selbst?
+          </div>
+          <p className="text-sm leading-relaxed">{bias.self_recognition}</p>
+        </div>
+      )}
+      {bias.source_url && (
+        <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+          <BookOpen className="h-3.5 w-3.5" />
+          <span>Wissenschaftliche Quelle:</span>
+          <a href={bias.source_url} target="_blank" rel="noreferrer noopener"
+            className="inline-flex items-center gap-1 text-foreground underline decoration-dotted hover:text-accent">
+            {bias.source_label ?? "mehr lesen"}<ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      )}
+    </Card>
   );
 }
 
