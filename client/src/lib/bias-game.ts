@@ -72,6 +72,7 @@ export interface CandidateRow {
   age: number | null;
   pronouns: string | null;
   image_url: string | null;
+  video_url: string | null;
   headline: string;
   description: string;
   qualifications: string;

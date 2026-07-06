@@ -49,6 +49,12 @@ function resolveCandidateImage(raw: string | null): string | null {
   return CANDIDATE_IMAGE_MAP[raw] ?? raw;
 }
 
+function resolveYoutubeEmbedUrl(raw: string | null): string | null {
+  if (!raw) return null;
+  const match = raw.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]{11})/);
+  return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+}
+
 export function PlayPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
@@ -1044,6 +1050,23 @@ function CandidateCard({ c }: { c: CandidateRow }) {
             <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">Qualifikationen</div>
             <pre className="text-xs whitespace-pre-wrap font-sans">{c.qualifications}</pre>
           </div>
+          {(() => {
+            const embedUrl = resolveYoutubeEmbedUrl(c.video_url);
+            return embedUrl ? (
+              <div className="mt-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">Bewerbungsvideo</div>
+                <div className="aspect-video rounded-xl overflow-hidden">
+                  <iframe
+                    src={embedUrl}
+                    title={`Bewerbungsvideo ${c.name}`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            ) : null;
+          })()}
         </div>
       </div>
     </Card>

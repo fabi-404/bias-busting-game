@@ -71,6 +71,7 @@ CREATE TABLE candidates (
   age INTEGER,
   pronouns TEXT,
   image_url TEXT,
+  video_url TEXT,
   headline TEXT NOT NULL,
   description TEXT NOT NULL,
   qualifications TEXT NOT NULL,
@@ -308,12 +309,13 @@ WHERE slug = 'attribution';
 -- SEED: Kandidat:innen (9 gesamt, 3 pro Runde)
 -- ============================================================
 
-INSERT INTO candidates (round_number, position, name, age, pronouns, headline, description, qualifications, appeals_to_bias_id)
+INSERT INTO candidates (round_number, position, name, age, pronouns, video_url, headline, description, qualifications, appeals_to_bias_id)
 VALUES
-(1, 1, 'Dr. Lena Schäfer', 32, 'sie/ihr',
- 'Promovierte Wirtschaftspsychologin, Harvard MBA',
- 'Stilsicher, eloquent, internationale Karriere bei Top-Beratungen. Wirkt im Gespräch souverän und schlagfertig.',
- '• MBA Harvard Business School' || chr(10) || '• 4 Jahre McKinsey' || chr(10) || '• Publikationen zu Leadership' || chr(10) || '• Englisch, Französisch, Deutsch verhandlungssicher',
+(1, 1, 'Vernon Hartmann', 42, 'er/ihm',
+ 'https://www.youtube.com/watch?v=zvamSwIaOvY',
+ 'Master in Robotik, 18 Jahre Medizintechnik – Bewerbung als Team Lead',
+ 'Geboren in Spanien, Master in Robotik von der Universität Barcelona. Bringt 18 Jahre Erfahrung in der Medizintechnik mit, speziell in Entwicklung und Implementierung chirurgischer Roboter. Nachhaltigkeit liegt ihm am Herzen: Er nutzt das Fahrrad als Hauptfortbewegungsmittel und integriert umweltbewusste Ansätze in seine Arbeit. Als passionierter Marathonläufer bringt er Ausdauer, Zielstrebigkeit und Teamgeist mit – Eigenschaften, die er gerne in die Rolle des Team Leads einbringen möchte.',
+ '• Master Robotik, Universität Barcelona' || chr(10) || '• 18 Jahre Medizintechnik – chirurgische Robotik' || chr(10) || '• Nachhaltiger Lebensstil (Fahrrad als Hauptverkehrsmittel)' || chr(10) || '• Marathonläufer',
  (SELECT id FROM biases WHERE slug = 'halo')),
 
 (1, 2, 'Marcus Berger', 41, 'er/ihm',
