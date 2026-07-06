@@ -306,7 +306,7 @@ SELECT id, q, ans, expl, pos FROM biases, (VALUES
 WHERE slug = 'attribution';
 
 -- ============================================================
--- SEED: Kandidat:innen (9 gesamt, 3 pro Runde)
+-- SEED: Kandidat:innen (6 gesamt, 2 pro Runde)
 -- ============================================================
 
 INSERT INTO candidates (round_number, position, name, age, pronouns, video_url, headline, description, qualifications, appeals_to_bias_id)
@@ -325,18 +325,12 @@ VALUES
  '• Ausbildung Mechatroniker, IHK Berlin' || chr(10) || '• 12 Jahre Wartung & Instandhaltung Robotersysteme bei Bosch' || chr(10) || '• Engagement für Barrierefreiheit, eigener Technikblog' || chr(10) || '• Gamer & Streamer',
  (SELECT id FROM biases WHERE slug = 'attribution')),
 
-(1, 3, 'Ahmed Aslan', 36, 'er/ihm',
+(2, 1, 'Ahmed Aslan', 36, 'er/ihm',
  'https://www.youtube.com/watch?v=LXOm8Fk75pY',
  'Senior Consultant, Master Mechatronik RWTH Aachen',
  'Master in Mechatronik von der RWTH Aachen. In den letzten 9 Jahren umfassende Erfahrung in der Entwicklung und Implementierung von Robotiksystemen gesammelt, zuletzt als Senior Consultant. Als Teamplayer mit internationalem Hintergrund spricht er fünf Sprachen fließend und bringt kulturelle Sensibilität sowie strategisches Denken in jedes Projekt ein. In seiner Freizeit schärft er seine Fähigkeiten durch Schach. Er ist überzeugt, dass seine langjährige Erfahrung und sein strategischer Ansatz eine wertvolle Basis für die Rolle des Team Leads in der Abteilung Robotik darstellen.',
  '• Master Mechatronik, RWTH Aachen' || chr(10) || '• 9 Jahre Robotiksysteme – zuletzt Senior Consultant' || chr(10) || '• 5 Sprachen fließend' || chr(10) || '• Ambitionierter Schachspieler',
  (SELECT id FROM biases WHERE slug = 'halo')),
-
-(2, 1, 'Jonas Weber', 29, 'er/ihm',
- 'Triathlet, BWL-Absolvent, „passt ins Team"',
- 'Sportlich, kommunikativ, gleiche Hobbys wie viele aus dem Team. Wirkt sofort sympathisch und zugänglich.',
- '• B.Sc. BWL Mannheim' || chr(10) || '• 3 Jahre Sales' || chr(10) || '• Trainer Triathlon-Verein' || chr(10) || '• Aktiv in Alumni-Netzwerk',
- (SELECT id FROM biases WHERE slug = 'similarity')),
 
 (2, 2, 'Leila Yildrim', 40, 'sie/ihr',
  'https://www.youtube.com/watch?v=cPMQV2iI9AY',
@@ -345,25 +339,12 @@ VALUES
  '• Bachelor Maschinenbau, Universität Stuttgart' || chr(10) || '• 16 Jahre Robotikdesign & Prototypenentwicklung' || chr(10) || '• Erfahrene Teamleiterin' || chr(10) || '• Engagement für Diversität & Inklusion',
  (SELECT id FROM biases WHERE slug = 'similarity')),
 
-(2, 3, 'Tim Hoffmann', 38, 'er/ihm',
- 'Vielversprechend trotz CV-Lücke',
- 'Starkes Fachwissen, aber 2 Jahre Lücke vor 5 Jahren. Im Interview offen und reflektiert.',
- '• Senior Recruiter Tech' || chr(10) || '• 6 Jahre IT-Recruiting' || chr(10) || '• Lücke 2019–2021 (Burnout & Reha)' || chr(10) || '• Aktiv in Mental-Health-Initiativen',
- (SELECT id FROM biases WHERE slug = 'attribution')),
-
 (3, 1, 'Noor Al Mansur', 31, 'sie/ihr',
  'https://www.youtube.com/watch?v=F-JMzSPf6BM',
  'Master Computer Engineering, führend in ML für Robotik bei KPMG',
  'Master in Computer Engineering von der Universität München. Seit 6 Jahren Softwareentwicklerin für Systeme in der Robotik bei KPMG, mit besonderem Fokus auf Machine Learning. Trotz einer leichten Behinderung hat sie es geschafft, in ihrem Bereich führend zu werden. Ihre Stärke liegt in der Entwicklung innovativer Lösungen sowie in der effektiven Zusammenarbeit mit Teams. Sie sieht die Rolle des Team Leads als Möglichkeit, ihre technische Expertise und ihren Führungsansatz in der Robotik weiter auszubauen.',
  '• Master Computer Engineering, Universität München' || chr(10) || '• 6 Jahre Softwareentwicklung Robotik bei KPMG' || chr(10) || '• Fokus Machine Learning' || chr(10) || '• Führend in ihrem Fachbereich',
  (SELECT id FROM biases WHERE slug = 'halo')),
-
-(3, 2, 'Johannes Berg', 53, 'er/ihm',
- 'https://www.youtube.com/watch?v=GdN8_dS16sY',
- 'Abteilungsleiter Steuerungstechnik, „bewährtes Profil"',
- 'Verheiratet, Familienvater, 30 Jahre Erfahrung in der Steuerungstechnik. Hat als Abteilungsleiter umfangreiche Führungsqualitäten erworben und kombiniert technisches Wissen mit Sinn für Struktur und Organisation, um auch komplexe Projekte erfolgreich zu leiten. Als Träger eines Hörgeräts begegnet er Herausforderungen pragmatisch und findet Lösungen, die allen Teammitgliedern zugutekommen. In seiner Freizeit ist er Hobbyfotograf und leidenschaftlicher Koch – Kreativität und Präzision sind ihm auch außerhalb der Arbeit wichtig.',
- '• 30 Jahre Erfahrung Steuerungstechnik' || chr(10) || '• Abteilungsleiter mit umfangreicher Führungserfahrung' || chr(10) || '• Strukturierte, organisierte Arbeitsweise' || chr(10) || '• Hobbyfotograf, leidenschaftlicher Koch',
- (SELECT id FROM biases WHERE slug = 'confirmation')),
 
 (3, 3, 'Emily Fischer', 28, 'sie/ihr',
  'https://www.youtube.com/watch?v=4t4_PiYWaJU',

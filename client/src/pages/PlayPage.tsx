@@ -208,7 +208,7 @@ export function PlayPage() {
       setAssignments(newAssignments as AssignmentRow[]);
 
       const pool = candidates.filter((c) => c.round_number === 1);
-      const selected = [...pool].sort(() => Math.random() - 0.5).slice(0, 3).map((c) => c.id);
+      const selected = [...pool].sort(() => Math.random() - 0.5).slice(0, 2).map((c) => c.id);
 
       const updated = await api.updateSession(session.id, {
         phase: "phase1_knowledge",
@@ -328,7 +328,7 @@ export function PlayPage() {
     if (!session || !isHost) return;
     const next = session.current_round + 1;
     const roundPool = candidates.filter((c) => c.round_number === next);
-    const selected = [...roundPool].sort(() => Math.random() - 0.5).slice(0, 3).map((c) => c.id);
+    const selected = [...roundPool].sort(() => Math.random() - 0.5).slice(0, 2).map((c) => c.id);
     try {
       const updated = await api.updateSession(session.id, {
         phase: "phase3_candidates",
