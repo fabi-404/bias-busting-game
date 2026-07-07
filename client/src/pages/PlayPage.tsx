@@ -817,6 +817,12 @@ function LobbyView({ code, isHost, players, onStart, phaseDuration, anonymousVot
         <p className="text-sm text-muted-foreground mt-1">
           Ihr seid das Einstellungsteam und entscheidet gemeinsam, wer den Job bekommt.
         </p>
+        <ul className="text-sm text-muted-foreground mt-3 space-y-1 list-disc list-inside">
+          <li>Abgeschlossenes Studium in Robotik, Mechatronik oder vergleichbar</li>
+          <li>Mehrjährige Berufserfahrung im Bereich Robotik/Automatisierung</li>
+          <li>Erste Führungserfahrung wünschenswert</li>
+          <li>Teamfähigkeit und strategisches Denken</li>
+        </ul>
       </Card>
 
       {isHost && (
