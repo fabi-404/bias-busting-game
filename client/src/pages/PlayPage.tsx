@@ -15,7 +15,7 @@ import {
   ArrowLeft, Copy, Crown, Sparkles, Users, Brain, HelpCircle,
   UserCheck, Vote, Eye, Trophy, Check, X, ChevronRight, ChevronLeft,
   BookOpen, ExternalLink, Zap, Timer as TimerIcon, Star, BarChart3,
-  Volume2, VolumeX, AlertTriangle, ShieldCheck,
+  Volume2, VolumeX, AlertTriangle, ShieldCheck, Briefcase,
 } from "lucide-react";
 
 import {
@@ -807,6 +807,16 @@ function LobbyView({ code, isHost, players, onStart, phaseDuration, anonymousVot
             </div>
           </div>
         )}
+      </Card>
+
+      <Card className="rounded-3xl p-5">
+        <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-accent mb-2">
+          <Briefcase className="h-4 w-4" /> Stellenausschreibung
+        </div>
+        <p className="font-display text-xl">Team Lead Robotik-Abteilung</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Ihr seid das Einstellungsteam und entscheidet gemeinsam, wer den Job bekommt.
+        </p>
       </Card>
 
       {isHost && (
