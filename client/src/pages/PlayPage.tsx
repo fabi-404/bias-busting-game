@@ -73,6 +73,7 @@ export function PlayPage() {
   const [prevotes, setPrevotes] = useState<CandidatePrevoteRow[]>([]);
   const [achievements, setAchievements] = useState<AchievementRow[]>([]);
   const [readyRows, setReadyRows] = useState<ReadyRow[]>([]);
+  const [correctCandidateByRound, setCorrectCandidateByRound] = useState<Record<number, string | null>>({});
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [muted, setMutedState] = useState(() => isMuted());
@@ -177,6 +178,9 @@ export function PlayPage() {
     socket.on("guesses:updated", (g: BiasGuessRow[]) => setGuesses(g));
     socket.on("achievements:updated", (a: AchievementRow[]) => setAchievements(a));
     socket.on("ready:updated", (r: ReadyRow[]) => setReadyRows(r));
+    socket.on("round_resolved", (r: { round_number: number; correct_candidate_id: string | null }) =>
+      setCorrectCandidateByRound((prev) => ({ ...prev, [r.round_number]: r.correct_candidate_id })),
+    );
 
     return () => {
       socket.off("session:updated");
@@ -188,6 +192,7 @@ export function PlayPage() {
       socket.off("guesses:updated");
       socket.off("achievements:updated");
       socket.off("ready:updated");
+      socket.off("round_resolved");
       if (session?.id) leaveRoom(session.id);
     };
   }, [session?.id]);
@@ -322,6 +327,22 @@ export function PlayPage() {
       console.error(e);
       toast.error("Aktionskarte konnte nicht entfernt werden.");
     }
+  }
+
+  async function goToRoundResults() {
+    if (!session || !isHost) return;
+    try {
+      const { correct_candidate_id, players: updatedPlayers } = await api.resolveRound(
+        session.id,
+        session.current_round,
+      );
+      setCorrectCandidateByRound((prev) => ({ ...prev, [session.current_round]: correct_candidate_id }));
+      setPlayers(updatedPlayers);
+    } catch (e) {
+      console.error(e);
+      toast.error("Rundenauswertung konnte nicht berechnet werden.");
+    }
+    await setPhase("round_results");
   }
 
   async function startNextRound() {
@@ -585,7 +606,7 @@ export function PlayPage() {
                 isHost={isHost}
                 canAdvance={canAdvance}
                 onVote={submitCandidateVote}
-                onNext={() => setPhase("round_results")}
+                onNext={goToRoundResults}
                 sessionId={session.id}
                 myName={identity?.name ?? ""}
                 anonymous={session.anonymous_voting ?? true}
@@ -601,6 +622,7 @@ export function PlayPage() {
                 assignments={assignments}
                 prevotes={prevotes}
                 round={session.current_round}
+                correctCandidateId={correctCandidateByRound[session.current_round] ?? null}
                 isHost={isHost}
                 isLastRound={session.current_round >= session.total_rounds}
                 canAdvance={canAdvance}
@@ -1410,16 +1432,25 @@ function roundWinner(candidates: CandidateRow[], votes: CandidateVoteRow[], roun
   return candidates.find((c) => c.id === winnerId) ?? null;
 }
 
-function RoundResults({ candidates, votes, players, biases, assignments, prevotes, round, isHost, isLastRound, canAdvance, onNextRound, onGoToBiasGuess }: {
+function RoundResults({ candidates, votes, players, biases, assignments, prevotes, round, correctCandidateId, isHost, isLastRound, canAdvance, onNextRound, onGoToBiasGuess }: {
   candidates: CandidateRow[]; votes: CandidateVoteRow[]; players: PlayerRow[];
   biases: BiasRow[]; assignments: AssignmentRow[]; prevotes: CandidatePrevoteRow[];
-  round: number; isHost: boolean; isLastRound: boolean; canAdvance: boolean;
+  round: number; correctCandidateId: string | null; isHost: boolean; isLastRound: boolean; canAdvance: boolean;
   onNextRound: () => void; onGoToBiasGuess: () => void;
 }) {
   const winner = roundWinner(candidates, votes, round);
   const trapBias = winner?.appeals_to_bias_id
     ? biases.find((b) => b.id === winner.appeals_to_bias_id) ?? null
     : null;
+  const correctCandidate = correctCandidateId
+    ? candidates.find((c) => c.id === correctCandidateId) ?? null
+    : null;
+  const correctVoterNames = correctCandidate
+    ? votes
+        .filter((v) => v.round_number === round && v.candidate_id === correctCandidate.id)
+        .map((v) => players.find((p) => p.id === v.player_id)?.name)
+        .filter((name): name is string => !!name)
+    : [];
 
   // Aggregierter Bewertungs-Vergleich: erst ab 2 Träger:innen, sonst wäre die Person enttarnt
   let carrierAvg: number | null = null;
@@ -1485,6 +1516,24 @@ function RoundResults({ candidates, votes, players, biases, assignments, prevote
             </p>
           </Card>
         )
+      )}
+
+      {correctCandidate && (
+        <Card className="rounded-3xl p-6 border-2 border-blue-500 bg-blue-500/10">
+          <div className="flex items-center gap-2 font-display text-xl text-blue-600">
+            <ShieldCheck className="h-5 w-5" /> Objektiv beste Wahl
+          </div>
+          <p className="mt-2 text-sm leading-relaxed">
+            <b>{correctCandidate.name}</b> war frei von jeder Bias-Falle — die fachlich fundierteste Entscheidung dieser Runde.{" "}
+            {winner?.id === correctCandidate.id
+              ? "Die Gruppe hat genau richtig entschieden!"
+              : `Die Gruppe hat sich stattdessen für ${winner?.name ?? "niemanden"} entschieden.`}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Wer für {correctCandidate.name} gestimmt hat, erhält <b>+2 Bonuspunkte</b>
+            {correctVoterNames.length > 0 && <>: {correctVoterNames.join(", ")}</>}.
+          </p>
+        </Card>
       )}
 
       <Card className="rounded-3xl p-6">

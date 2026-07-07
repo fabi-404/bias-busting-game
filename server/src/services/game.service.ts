@@ -98,6 +98,44 @@ export class GameService {
     return rows;
   }
 
+  static async resolveRound(
+    sessionId: string,
+    roundNumber: number,
+  ): Promise<{ correct_candidate_id: string | null; players: PlayerPublic[] }> {
+    const { rows: correctRows } = await PostgreSQLConfig.pool.query(GameQueries.findCorrectCandidate, [
+      roundNumber,
+    ]);
+    const correctCandidateId: string | null = correctRows[0]?.id ?? null;
+
+    if (!correctCandidateId) {
+      const players = await PostgreSQLConfig.pool.query(GameQueries.listPlayersPublic, [sessionId]);
+      return { correct_candidate_id: null, players: players.rows };
+    }
+
+    const { rows: roundVotes } = await PostgreSQLConfig.pool.query(GameQueries.listVotesForRound, [
+      sessionId,
+      roundNumber,
+    ]);
+    const correctVoters = roundVotes.filter((v) => v.candidate_id === correctCandidateId);
+
+    for (const v of correctVoters) {
+      const { rows: inserted } = await PostgreSQLConfig.pool.query(GameQueries.addRoundHireBonus, [
+        sessionId,
+        v.player_id,
+        roundNumber,
+        2,
+      ]);
+      if (inserted.length) {
+        await PostgreSQLConfig.pool.query(GameQueries.addScore, [2, v.player_id]);
+      }
+    }
+
+    const { rows: players } = await PostgreSQLConfig.pool.query(GameQueries.listPlayersPublic, [
+      sessionId,
+    ]);
+    return { correct_candidate_id: correctCandidateId, players };
+  }
+
   static async prevote(
     sessionId: string,
     body: PostPrevoteBody,

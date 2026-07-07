@@ -51,6 +51,19 @@ export class GameRoute {
     return res.json({ ok: true });
   }
 
+  static async resolveRound(req: Request<{ id: string; round: string }>, res: Response) {
+    const { id, round } = req.params;
+    const roundNumber = Number(round);
+    if (!Number.isInteger(roundNumber) || roundNumber < 1) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ error: "invalid round" });
+    }
+
+    const { correct_candidate_id, players } = await GameService.resolveRound(id, roundNumber);
+    io.to(id).emit("players:updated", players);
+    io.to(id).emit("round_resolved", { round_number: roundNumber, correct_candidate_id });
+    return res.json({ correct_candidate_id, players });
+  }
+
   static async prevote(req: Request<{ id: string }, object, PostPrevoteBody>, res: Response) {
     const { id } = req.params;
     const prevotes = await GameService.prevote(id, req.body);

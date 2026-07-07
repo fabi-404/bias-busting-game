@@ -136,4 +136,23 @@ export class GameQueries {
   public static readonly addBonus = `
     UPDATE session_players SET score = score + $1 WHERE id = $2
   `;
+
+  public static readonly findCorrectCandidate = `
+    SELECT id FROM candidates WHERE round_number = $1 AND appeals_to_bias_id IS NULL LIMIT 1
+  `;
+
+  public static readonly listVotesForRound = `
+    SELECT player_id, candidate_id FROM candidate_votes WHERE session_id = $1 AND round_number = $2
+  `;
+
+  public static readonly addRoundHireBonus = `
+    INSERT INTO round_hire_bonuses (session_id, player_id, round_number, bonus_points)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (session_id, player_id, round_number) DO NOTHING
+    RETURNING id
+  `;
+
+  public static readonly listRoundHireBonuses = `
+    SELECT * FROM round_hire_bonuses WHERE session_id = $1
+  `;
 }

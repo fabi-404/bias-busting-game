@@ -65,6 +65,12 @@ export const api = {
       body: JSON.stringify({ player_id, round_number, candidate_id }),
     }),
 
+  resolveRound: (sessionId: string, round: number) =>
+    request<{ correct_candidate_id: string | null; players: import("./bias-game").PlayerRow[] }>(
+      `/sessions/${sessionId}/rounds/${round}/resolve`,
+      { method: "POST" },
+    ),
+
   submitPrevote: (sessionId: string, player_id: string, round_number: number, candidate_id: string, rating: number) =>
     request(`/sessions/${sessionId}/prevotes`, {
       method: "POST",

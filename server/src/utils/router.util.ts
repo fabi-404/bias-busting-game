@@ -62,6 +62,7 @@ export class RouterUtil {
     // Authentifizierte Teilnehmer (Host oder Spieler)
     sessionsRouter.post("/:id/answers", requireAuth, wrap(GameRoute.answer));
     sessionsRouter.post("/:id/votes", requireAuth, wrap(GameRoute.vote));
+    sessionsRouter.post("/:id/rounds/:round/resolve", requireAuth, wrap(GameRoute.resolveRound));
     sessionsRouter.post("/:id/prevotes", requireAuth, wrap(GameRoute.prevote));
     sessionsRouter.post("/:id/guesses", requireAuth, wrap(GameRoute.guess));
     sessionsRouter.post("/:id/ready", requireAuth, wrap(GameRoute.ready));
