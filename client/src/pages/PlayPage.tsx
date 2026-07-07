@@ -1422,6 +1422,16 @@ function Phase5BiasGuess({ biases, players, assignments, guesses, myPlayerId, ro
   );
 }
 
+// ===== Objektiv beste Wahl: fachliche Begründung pro Kandidat:in =====
+const OBJECTIVELY_CORRECT_REASONING: Record<string, string> = {
+  "Vernon Hartmann":
+    "Vernon bringt mit 18 Jahren Erfahrung in der Entwicklung und Implementierung chirurgischer Robotik genau die Fachtiefe mit, die für die Team-Lead-Rolle in der Robotik-Abteilung zählt — nicht sein Marathon-Hobby oder sein nachhaltiger Lebensstil. Huffcutt & Arthur (1994, Journal of Applied Psychology) zeigen: Strukturierte, kompetenzbasierte Bewertung erhöht die Vorhersagevalidität für Jobperformance von r ≈ .20 auf r ≈ .51 gegenüber unstrukturierten Gesamteindrücken. Wer sich nur am Gesamteindruck orientiert, läuft Gefahr, genau die Fachexpertise zu übersehen, die hier objektiv den Ausschlag geben sollte.",
+  "Ahmed Aslan":
+    "Ahmed hat 9 Jahre einschlägige Erfahrung in Entwicklung und Implementierung von Robotiksystemen, zuletzt als Senior Consultant — eine direkte fachliche Passung zur ausgeschriebenen Team-Lead-Rolle. Dass er fünf Sprachen spricht oder Schach spielt, ist sympathisch, aber kein Qualifikationsmerkmal für die Position. Levashina & Campion (2007) empfehlen genau deshalb, Auswahlentscheidungen an rollenrelevanten Kompetenzen statt an nebensächlichen Persönlichkeitsmerkmalen festzumachen — sonst rutscht die Entscheidung unbemerkt in Richtung Sympathie statt Eignung.",
+  "Emily Fischer":
+    "Emily hat sich autodidaktisch tiefgehende Kenntnisse in KI und Programmierung angeeignet und drei Jahre freiberuflich Robotic-Apps entwickelt — Kompetenzen, die unmittelbar für die Rolle relevant sind. Dass sie Mutter ist oder Yoga unterrichtet, sagt nichts über ihre fachliche Eignung aus. Correll, Benard & Paik (2007) belegen die „Mutterschaftsstrafe“: Mütter werden bei identischer Qualifikation systematisch als weniger kompetent eingeschätzt. Wer Emilys Qualifikation gegen dieses Vorurteil verteidigt, trifft die fachlich fundierteste Entscheidung.",
+};
+
 // ===== Runden-Auswertung mit Bias-Falle-Reveal =====
 function roundWinner(candidates: CandidateRow[], votes: CandidateVoteRow[], round: number): CandidateRow | null {
   const tally: Record<string, number> = {};
@@ -1523,13 +1533,26 @@ function RoundResults({ candidates, votes, players, biases, assignments, prevote
           <div className="flex items-center gap-2 font-display text-xl text-blue-600">
             <ShieldCheck className="h-5 w-5" /> Objektiv beste Wahl
           </div>
-          <p className="mt-2 text-sm leading-relaxed">
-            <b>{correctCandidate.name}</b> war frei von jeder Bias-Falle — die fachlich fundierteste Entscheidung dieser Runde.{" "}
-            {winner?.id === correctCandidate.id
-              ? "Die Gruppe hat genau richtig entschieden!"
-              : `Die Gruppe hat sich stattdessen für ${winner?.name ?? "niemanden"} entschieden.`}
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
+          {winner?.id === correctCandidate.id ? (
+            <p className="mt-2 text-sm leading-relaxed">
+              <b>{correctCandidate.name}</b> war frei von jeder Bias-Falle — die Gruppe hat genau richtig entschieden!
+            </p>
+          ) : (
+            <p className="mt-2 text-sm leading-relaxed">
+              Die Gruppe hat sich für <b>{winner?.name ?? "niemanden"}</b> entschieden. Fachlich am besten
+              geeignet war jedoch <b>{correctCandidate.name}</b> — hier lohnt sich ein genauer Blick, welcher
+              Bias hier mitgespielt haben könnte.
+            </p>
+          )}
+          {OBJECTIVELY_CORRECT_REASONING[correctCandidate.name] && (
+            <div className="mt-3 rounded-2xl bg-background/60 p-4 text-sm leading-relaxed">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                Warum {correctCandidate.name} objektiv passt
+              </div>
+              {OBJECTIVELY_CORRECT_REASONING[correctCandidate.name]}
+            </div>
+          )}
+          <p className="mt-3 text-sm text-muted-foreground">
             Wer für {correctCandidate.name} gestimmt hat, erhält <b>+2 Bonuspunkte</b>
             {correctVoterNames.length > 0 && <>: {correctVoterNames.join(", ")}</>}.
           </p>

@@ -328,7 +328,7 @@ VALUES
  'Master in Robotik, 18 Jahre Medizintechnik – Bewerbung als Team Lead',
  'Geboren in Spanien, Master in Robotik von der Universität Barcelona. Bringt 18 Jahre Erfahrung in der Medizintechnik mit, speziell in Entwicklung und Implementierung chirurgischer Roboter. Nachhaltigkeit liegt ihm am Herzen: Er nutzt das Fahrrad als Hauptfortbewegungsmittel und integriert umweltbewusste Ansätze in seine Arbeit. Als passionierter Marathonläufer bringt er Ausdauer, Zielstrebigkeit und Teamgeist mit – Eigenschaften, die er gerne in die Rolle des Team Leads einbringen möchte.',
  '• Master Robotik, Universität Barcelona' || chr(10) || '• 18 Jahre Medizintechnik – chirurgische Robotik' || chr(10) || '• Nachhaltiger Lebensstil (Fahrrad als Hauptverkehrsmittel)' || chr(10) || '• Marathonläufer',
- (SELECT id FROM biases WHERE slug = 'halo')),
+ NULL),
 
 (1, 2, 'Kevin Schneider', 32, 'er/ihm',
  'https://www.youtube.com/watch?v=8oouPOr1LI4',
@@ -342,7 +342,7 @@ VALUES
  'Senior Consultant, Master Mechatronik RWTH Aachen',
  'Master in Mechatronik von der RWTH Aachen. In den letzten 9 Jahren umfassende Erfahrung in der Entwicklung und Implementierung von Robotiksystemen gesammelt, zuletzt als Senior Consultant. Als Teamplayer mit internationalem Hintergrund spricht er fünf Sprachen fließend und bringt kulturelle Sensibilität sowie strategisches Denken in jedes Projekt ein. In seiner Freizeit schärft er seine Fähigkeiten durch Schach. Er ist überzeugt, dass seine langjährige Erfahrung und sein strategischer Ansatz eine wertvolle Basis für die Rolle des Team Leads in der Abteilung Robotik darstellen.',
  '• Master Mechatronik, RWTH Aachen' || chr(10) || '• 9 Jahre Robotiksysteme – zuletzt Senior Consultant' || chr(10) || '• 5 Sprachen fließend' || chr(10) || '• Ambitionierter Schachspieler',
- (SELECT id FROM biases WHERE slug = 'halo')),
+ NULL),
 
 (2, 2, 'Leila Yildrim', 40, 'sie/ihr',
  'https://www.youtube.com/watch?v=cPMQV2iI9AY',
