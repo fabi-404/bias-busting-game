@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -1734,8 +1735,43 @@ function FinalResults({ players, biases, assignments, sessionId, myPlayerId, myB
         <ReflectionJournal sessionId={sessionId} playerId={myPlayerId} myBias={myBias} />
       )}
 
+      <div className="flex justify-center">
+        <LearningsDialog biases={biases} />
+      </div>
+
       <Link to="/"><Button size="lg" variant="outline" className="h-12">Zur Startseite</Button></Link>
     </div>
+  );
+}
+
+// ===== Learnings: Übersicht aller Bias-Typen nach Spielende =====
+function LearningsDialog({ biases }: { biases: BiasRow[] }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="lg" className="h-12">
+          <BookOpen className="h-4 w-4 mr-2" />
+          Mehr über Unconscious Bias erfahren
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Die 4 Bias-Typen im Überblick</DialogTitle>
+        </DialogHeader>
+        <Tabs defaultValue={biases[0]?.slug}>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+            {biases.map((b) => (
+              <TabsTrigger key={b.slug} value={b.slug}>{b.name}</TabsTrigger>
+            ))}
+          </TabsList>
+          {biases.map((b) => (
+            <TabsContent key={b.slug} value={b.slug}>
+              <BiasReviewCard bias={b} />
+            </TabsContent>
+          ))}
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 }
 
