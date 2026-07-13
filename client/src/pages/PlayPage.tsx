@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { api, setApiToken } from "@/lib/api";
 import { socket, joinRoom, leaveRoom } from "@/lib/socket";
 import { getIdentity, setIdentity } from "@/lib/game-storage";
@@ -84,6 +85,9 @@ export function PlayPage() {
     setMuted(next);
     setMutedState(next);
   }
+
+  // Score-Stand vor der Rundenauswertung, für den Count-up-Effekt in RoundResults
+  const previousScoresRef = useRef<Record<string, number>>({});
 
   // Fanfare beim Erreichen der Endauswertung
   const fanfarePlayedRef = useRef(false);
@@ -331,6 +335,7 @@ export function PlayPage() {
 
   async function goToRoundResults() {
     if (!session || !isHost) return;
+    previousScoresRef.current = Object.fromEntries(players.map((p) => [p.id, p.score]));
     try {
       const { correct_candidate_id, players: updatedPlayers } = await api.resolveRound(
         session.id,
@@ -512,158 +517,169 @@ export function PlayPage() {
               />
             )}
 
-            {session.phase === "lobby" && (
-              <LobbyView
-                code={code!}
-                isHost={isHost}
-                players={players}
-                onStart={startGame}
-                phaseDuration={phaseDuration}
-                anonymousVoting={session.anonymous_voting ?? true}
-                totalRounds={session.total_rounds}
-                onUpdateSettings={async (patch) => {
-                  await api.updateSession(session.id, patch);
-                }}
-              />
-            )}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={session.phase}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+              >
+                {session.phase === "lobby" && (
+                  <LobbyView
+                    code={code!}
+                    isHost={isHost}
+                    players={players}
+                    onStart={startGame}
+                    phaseDuration={phaseDuration}
+                    anonymousVoting={session.anonymous_voting ?? true}
+                    totalRounds={session.total_rounds}
+                    onUpdateSettings={async (patch) => {
+                      await api.updateSession(session.id, patch);
+                    }}
+                  />
+                )}
 
-            {session.phase === "phase1_knowledge" && (
-              <Phase1Knowledge
-                myBias={myBias}
-                isHost={isHost}
-                playersReady={players.length}
-                assignmentsCount={assignments.length}
-                canAdvance={canAdvance}
-                onNext={() => setPhase("phase2_questions", { current_question_index: 0 } as Partial<SessionRow>)}
-              />
-            )}
+                {session.phase === "phase1_knowledge" && (
+                  <Phase1Knowledge
+                    myBias={myBias}
+                    isHost={isHost}
+                    playersReady={players.length}
+                    assignmentsCount={assignments.length}
+                    canAdvance={canAdvance}
+                    onNext={() => setPhase("phase2_questions", { current_question_index: 0 } as Partial<SessionRow>)}
+                  />
+                )}
 
-            {session.phase === "phase2_questions" && (
-              <Phase2Questions
-                myBias={myBias}
-                myPlayerId={myPlayerId}
-                questions={questions}
-                answers={answers}
-                qIndex={session.current_question_index}
-                isHost={isHost}
-                players={players}
-                canAdvance={canAdvance}
-                onAnswer={submitAnswer}
-                onNext={nextQuestion}
-              />
-            )}
+                {session.phase === "phase2_questions" && (
+                  <Phase2Questions
+                    myBias={myBias}
+                    myPlayerId={myPlayerId}
+                    questions={questions}
+                    answers={answers}
+                    qIndex={session.current_question_index}
+                    isHost={isHost}
+                    players={players}
+                    canAdvance={canAdvance}
+                    onAnswer={submitAnswer}
+                    onNext={nextQuestion}
+                  />
+                )}
 
-            {session.phase === "phase3_candidates" && (() => {
-              const currentCandidate = selectedCandidates[session.current_candidate_index];
-              const prevotesForCandidate = currentCandidate
-                ? prevotes.filter((pv) => pv.candidate_id === currentCandidate.id && pv.round_number === session.current_round)
-                : [];
-              const allPrevoted = players.length > 0 && prevotesForCandidate.length >= players.length;
-              return (
-                <>
-                  <Phase3Candidates
+                {session.phase === "phase3_candidates" && (() => {
+                  const currentCandidate = selectedCandidates[session.current_candidate_index];
+                  const prevotesForCandidate = currentCandidate
+                    ? prevotes.filter((pv) => pv.candidate_id === currentCandidate.id && pv.round_number === session.current_round)
+                    : [];
+                  const allPrevoted = players.length > 0 && prevotesForCandidate.length >= players.length;
+                  return (
+                    <>
+                      <Phase3Candidates
+                        candidates={selectedCandidates}
+                        round={session.current_round}
+                        index={session.current_candidate_index}
+                        isHost={isHost}
+                        canAdvance={canAdvance && allPrevoted}
+                        onNext={nextCandidate}
+                        onPrev={prevCandidate}
+                        actionCards={actionCards}
+                        currentActionCardId={session.current_action_card_id}
+                        actionCardStartedAt={session.action_card_started_at}
+                        nowTick={nowTick}
+                        onDrawAction={drawActionCard}
+                        onClearAction={clearActionCard}
+                        myPlayerId={myPlayerId}
+                        players={players}
+                        prevotesForCandidate={prevotesForCandidate}
+                        onPrevote={submitPrevote}
+                        allPrevoted={allPrevoted}
+                      />
+                      {myPlayerId && allPrevoted && (
+                        <ChatPanel
+                          sessionId={session.id}
+                          myPlayerId={myPlayerId}
+                          myName={identity?.name ?? ""}
+                          phase={session.phase}
+                          round={session.current_round}
+                          title="Live-Chat zur Diskussion"
+                          players={players}
+                        />
+                      )}
+                    </>
+                  );
+                })()}
+
+                {session.phase === "phase4_hire_vote" && (
+                  <Phase4HireVote
                     candidates={selectedCandidates}
                     round={session.current_round}
-                    index={session.current_candidate_index}
-                    isHost={isHost}
-                    canAdvance={canAdvance && allPrevoted}
-                    onNext={nextCandidate}
-                    onPrev={prevCandidate}
-                    actionCards={actionCards}
-                    currentActionCardId={session.current_action_card_id}
-                    actionCardStartedAt={session.action_card_started_at}
-                    nowTick={nowTick}
-                    onDrawAction={drawActionCard}
-                    onClearAction={clearActionCard}
-                    myPlayerId={myPlayerId}
+                    votes={votes}
                     players={players}
-                    prevotesForCandidate={prevotesForCandidate}
-                    onPrevote={submitPrevote}
-                    allPrevoted={allPrevoted}
+                    myPlayerId={myPlayerId}
+                    isHost={isHost}
+                    canAdvance={canAdvance}
+                    onVote={submitCandidateVote}
+                    onNext={goToRoundResults}
+                    sessionId={session.id}
+                    myName={identity?.name ?? ""}
+                    anonymous={session.anonymous_voting ?? true}
                   />
-                  {myPlayerId && allPrevoted && (
-                    <ChatPanel
-                      sessionId={session.id}
-                      myPlayerId={myPlayerId}
-                      myName={identity?.name ?? ""}
-                      phase={session.phase}
-                      round={session.current_round}
-                      title="Live-Chat zur Diskussion"
-                      players={players}
-                    />
-                  )}
-                </>
-              );
-            })()}
+                )}
 
-            {session.phase === "phase4_hire_vote" && (
-              <Phase4HireVote
-                candidates={selectedCandidates}
-                round={session.current_round}
-                votes={votes}
-                players={players}
-                myPlayerId={myPlayerId}
-                isHost={isHost}
-                canAdvance={canAdvance}
-                onVote={submitCandidateVote}
-                onNext={goToRoundResults}
-                sessionId={session.id}
-                myName={identity?.name ?? ""}
-                anonymous={session.anonymous_voting ?? true}
-              />
-            )}
+                {session.phase === "round_results" && (
+                  <RoundResults
+                    candidates={selectedCandidates}
+                    votes={votes}
+                    players={players}
+                    biases={biases}
+                    assignments={assignments}
+                    prevotes={prevotes}
+                    round={session.current_round}
+                    correctCandidateId={correctCandidateByRound[session.current_round] ?? null}
+                    isHost={isHost}
+                    isLastRound={session.current_round >= session.total_rounds}
+                    canAdvance={canAdvance}
+                    previousScores={previousScoresRef.current}
+                    onNextRound={startNextRound}
+                    onGoToBiasGuess={() => setPhase("phase5_bias_guess")}
+                  />
+                )}
 
-            {session.phase === "round_results" && (
-              <RoundResults
-                candidates={selectedCandidates}
-                votes={votes}
-                players={players}
-                biases={biases}
-                assignments={assignments}
-                prevotes={prevotes}
-                round={session.current_round}
-                correctCandidateId={correctCandidateByRound[session.current_round] ?? null}
-                isHost={isHost}
-                isLastRound={session.current_round >= session.total_rounds}
-                canAdvance={canAdvance}
-                onNextRound={startNextRound}
-                onGoToBiasGuess={() => setPhase("phase5_bias_guess")}
-              />
-            )}
+                {session.phase === "phase5_bias_guess" && (
+                  <Phase5BiasGuess
+                    biases={biases}
+                    players={players}
+                    assignments={assignments}
+                    guesses={guesses}
+                    myPlayerId={myPlayerId}
+                    round={session.current_round}
+                    isHost={isHost}
+                    canAdvance={canAdvance}
+                    onSubmit={submitBiasGuesses}
+                    onNext={finishGame}
+                    isLastRound={true}
+                    sessionId={session.id}
+                    myName={identity?.name ?? ""}
+                  />
+                )}
 
-            {session.phase === "phase5_bias_guess" && (
-              <Phase5BiasGuess
-                biases={biases}
-                players={players}
-                assignments={assignments}
-                guesses={guesses}
-                myPlayerId={myPlayerId}
-                round={session.current_round}
-                isHost={isHost}
-                canAdvance={canAdvance}
-                onSubmit={submitBiasGuesses}
-                onNext={finishGame}
-                isLastRound={true}
-                sessionId={session.id}
-                myName={identity?.name ?? ""}
-              />
-            )}
-
-            {session.phase === "final_results" && (
-              <FinalResults
-                players={players}
-                biases={biases}
-                assignments={assignments}
-                sessionId={session.id}
-                myPlayerId={myPlayerId}
-                myBias={myBias}
-                candidates={candidates}
-                votes={votes}
-                totalRounds={session.total_rounds}
-                prevotes={prevotes}
-                achievements={achievements}
-              />
-            )}
+                {session.phase === "final_results" && (
+                  <FinalResults
+                    players={players}
+                    biases={biases}
+                    assignments={assignments}
+                    sessionId={session.id}
+                    myPlayerId={myPlayerId}
+                    myBias={myBias}
+                    candidates={candidates}
+                    votes={votes}
+                    totalRounds={session.total_rounds}
+                    prevotes={prevotes}
+                    achievements={achievements}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
 
           <PlayerSidebar
@@ -1442,10 +1458,11 @@ function roundWinner(candidates: CandidateRow[], votes: CandidateVoteRow[], roun
   return candidates.find((c) => c.id === winnerId) ?? null;
 }
 
-function RoundResults({ candidates, votes, players, biases, assignments, prevotes, round, correctCandidateId, isHost, isLastRound, canAdvance, onNextRound, onGoToBiasGuess }: {
+function RoundResults({ candidates, votes, players, biases, assignments, prevotes, round, correctCandidateId, isHost, isLastRound, canAdvance, previousScores, onNextRound, onGoToBiasGuess }: {
   candidates: CandidateRow[]; votes: CandidateVoteRow[]; players: PlayerRow[];
   biases: BiasRow[]; assignments: AssignmentRow[]; prevotes: CandidatePrevoteRow[];
   round: number; correctCandidateId: string | null; isHost: boolean; isLastRound: boolean; canAdvance: boolean;
+  previousScores: Record<string, number>;
   onNextRound: () => void; onGoToBiasGuess: () => void;
 }) {
   const winner = roundWinner(candidates, votes, round);
@@ -1477,103 +1494,137 @@ function RoundResults({ candidates, votes, players, biases, assignments, prevote
   }
 
   const ranked = [...players].sort((a, b) => b.score - a.score);
+  let cardIndex = 0;
 
   return (
     <div className="space-y-4">
-      <Card className="rounded-3xl p-6 text-center">
-        <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-[0.2em] text-accent">
-          <UserCheck className="h-4 w-4" /> Rundenauswertung · Runde {round}
-        </div>
-        {winner ? (
-          <>
-            <h2 className="mt-3 font-display text-3xl">Eingestellt: {winner.name}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{winner.headline}</p>
-          </>
-        ) : (
-          <h2 className="mt-3 font-display text-2xl text-muted-foreground">Keine Stimmen abgegeben.</h2>
-        )}
-      </Card>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: cardIndex++ * 0.12 }}
+      >
+        <Card className="rounded-3xl p-6 text-center">
+          <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-[0.2em] text-accent">
+            <UserCheck className="h-4 w-4" /> Rundenauswertung · Runde {round}
+          </div>
+          {winner ? (
+            <>
+              <h2 className="mt-3 font-display text-3xl">Eingestellt: {winner.name}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{winner.headline}</p>
+            </>
+          ) : (
+            <h2 className="mt-3 font-display text-2xl text-muted-foreground">Keine Stimmen abgegeben.</h2>
+          )}
+        </Card>
+      </motion.div>
 
       {winner && (
-        trapBias ? (
-          <Card className="rounded-3xl p-6 border-2" style={{ borderColor: trapBias.color, background: `${trapBias.color}12` }}>
-            <div className="flex items-center gap-2 font-display text-2xl" style={{ color: trapBias.color }}>
-              <AlertTriangle className="h-6 w-6" /> 🚨 In die Bias-Falle getappt!
-            </div>
-            <p className="mt-3 text-sm leading-relaxed">
-              <b>{winner.name}</b> war als Köder für den{" "}
-              <b style={{ color: trapBias.color }}>{trapBias.name}</b> angelegt:{" "}
-              {trapBias.short_description}
-            </p>
-            {carrierAvg !== null && otherAvg !== null && (
-              <div className="mt-4 rounded-2xl bg-background/60 p-4 text-sm">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
-                  Stille Bewertungen im Vergleich
-                </div>
-                Spieler:innen mit diesem Bias: <b>ø {carrierAvg.toFixed(1)} ★</b> · alle anderen:{" "}
-                <b>ø {otherAvg.toFixed(1)} ★</b>
-                {carrierAvg > otherAvg && " — der Bias hat sichtbar mitgespielt!"}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: cardIndex++ * 0.12 }}
+        >
+          {trapBias ? (
+            <Card className="rounded-3xl p-6 border-2" style={{ borderColor: trapBias.color, background: `${trapBias.color}12` }}>
+              <div className="flex items-center gap-2 font-display text-2xl" style={{ color: trapBias.color }}>
+                <AlertTriangle className="h-6 w-6" /> 🚨 In die Bias-Falle getappt!
               </div>
-            )}
-          </Card>
-        ) : (
-          <Card className="rounded-3xl p-6 border-2 border-green-500 bg-green-500/10">
-            <div className="flex items-center gap-2 font-display text-2xl text-green-600">
-              <ShieldCheck className="h-6 w-6" /> ✅ Falle umgangen!
-            </div>
-            <p className="mt-3 text-sm leading-relaxed">
-              <b>{winner.name}</b> war keiner Bias-Falle zugeordnet — eine neutrale, faire Wahl.
-            </p>
-          </Card>
-        )
+              <p className="mt-3 text-sm leading-relaxed">
+                <b>{winner.name}</b> war als Köder für den{" "}
+                <b style={{ color: trapBias.color }}>{trapBias.name}</b> angelegt:{" "}
+                {trapBias.short_description}
+              </p>
+              {carrierAvg !== null && otherAvg !== null && (
+                <div className="mt-4 rounded-2xl bg-background/60 p-4 text-sm">
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                    Stille Bewertungen im Vergleich
+                  </div>
+                  Spieler:innen mit diesem Bias: <b>ø {carrierAvg.toFixed(1)} ★</b> · alle anderen:{" "}
+                  <b>ø {otherAvg.toFixed(1)} ★</b>
+                  {carrierAvg > otherAvg && " — der Bias hat sichtbar mitgespielt!"}
+                </div>
+              )}
+            </Card>
+          ) : (
+            <Card className="rounded-3xl p-6 border-2 border-green-500 bg-green-500/10">
+              <div className="flex items-center gap-2 font-display text-2xl text-green-600">
+                <ShieldCheck className="h-6 w-6" /> ✅ Falle umgangen!
+              </div>
+              <p className="mt-3 text-sm leading-relaxed">
+                <b>{winner.name}</b> war keiner Bias-Falle zugeordnet — eine neutrale, faire Wahl.
+              </p>
+            </Card>
+          )}
+        </motion.div>
       )}
 
       {correctCandidate && (
-        <Card className="rounded-3xl p-6 border-2 border-blue-500 bg-blue-500/10">
-          <div className="flex items-center gap-2 font-display text-xl text-blue-600">
-            <ShieldCheck className="h-5 w-5" /> Objektiv beste Wahl
-          </div>
-          {winner?.id === correctCandidate.id ? (
-            <p className="mt-2 text-sm leading-relaxed">
-              <b>{correctCandidate.name}</b> war frei von jeder Bias-Falle — die Gruppe hat genau richtig entschieden!
-            </p>
-          ) : (
-            <p className="mt-2 text-sm leading-relaxed">
-              Die Gruppe hat sich für <b>{winner?.name ?? "niemanden"}</b> entschieden. Fachlich am besten
-              geeignet war jedoch <b>{correctCandidate.name}</b> — hier lohnt sich ein genauer Blick, welcher
-              Bias hier mitgespielt haben könnte.
-            </p>
-          )}
-          {OBJECTIVELY_CORRECT_REASONING[correctCandidate.name] && (
-            <div className="mt-3 rounded-2xl bg-background/60 p-4 text-sm leading-relaxed">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
-                Warum {correctCandidate.name} objektiv passt
-              </div>
-              {OBJECTIVELY_CORRECT_REASONING[correctCandidate.name]}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: cardIndex++ * 0.12 }}
+        >
+          <Card className="rounded-3xl p-6 border-2 border-blue-500 bg-blue-500/10">
+            <div className="flex items-center gap-2 font-display text-xl text-blue-600">
+              <ShieldCheck className="h-5 w-5" /> Objektiv beste Wahl
             </div>
-          )}
-          <p className="mt-3 text-sm text-muted-foreground">
-            Wer für {correctCandidate.name} gestimmt hat, erhält <b>+2 Bonuspunkte</b>
-            {correctVoterNames.length > 0 && <>: {correctVoterNames.join(", ")}</>}.
-          </p>
-        </Card>
+            {winner?.id === correctCandidate.id ? (
+              <p className="mt-2 text-sm leading-relaxed">
+                <b>{correctCandidate.name}</b> war frei von jeder Bias-Falle — die Gruppe hat genau richtig entschieden!
+              </p>
+            ) : (
+              <p className="mt-2 text-sm leading-relaxed">
+                Die Gruppe hat sich für <b>{winner?.name ?? "niemanden"}</b> entschieden. Fachlich am besten
+                geeignet war jedoch <b>{correctCandidate.name}</b> — hier lohnt sich ein genauer Blick, welcher
+                Bias hier mitgespielt haben könnte.
+              </p>
+            )}
+            {OBJECTIVELY_CORRECT_REASONING[correctCandidate.name] && (
+              <div className="mt-3 rounded-2xl bg-background/60 p-4 text-sm leading-relaxed">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                  Warum {correctCandidate.name} objektiv passt
+                </div>
+                {OBJECTIVELY_CORRECT_REASONING[correctCandidate.name]}
+              </div>
+            )}
+            <p className="mt-3 text-sm text-muted-foreground">
+              Wer für {correctCandidate.name} gestimmt hat, erhält <b>+2 Bonuspunkte</b>
+              {correctVoterNames.length > 0 && <>: {correctVoterNames.join(", ")}</>}.
+            </p>
+          </Card>
+        </motion.div>
       )}
 
-      <Card className="rounded-3xl p-6">
-        <div className="font-display text-xl mb-3">Zwischenstand</div>
-        <ul className="space-y-2">
-          {ranked.map((p, rank) => (
-            <li key={p.id} className="flex items-center justify-between rounded-xl bg-muted/40 px-4 py-2.5">
-              <span className="flex items-center gap-2 text-sm">
-                {rank < 3 && p.score > 0 && <span>{["🥇", "🥈", "🥉"][rank]}</span>}
-                <span>{p.avatar}</span>
-                <span className="truncate max-w-[180px]">{p.name}</span>
-              </span>
-              <span className="font-display text-lg">{p.score}</span>
-            </li>
-          ))}
-        </ul>
-      </Card>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: cardIndex++ * 0.12 }}
+      >
+        <Card className="rounded-3xl p-6">
+          <div className="font-display text-xl mb-3">Zwischenstand</div>
+          <ul className="space-y-2">
+            <AnimatePresence initial={false}>
+              {ranked.map((p, rank) => (
+                <motion.li
+                  key={p.id}
+                  layout
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                  className="flex items-center justify-between rounded-xl bg-muted/40 px-4 py-2.5"
+                >
+                  <span className="flex items-center gap-2 text-sm">
+                    {rank < 3 && p.score > 0 && <span>{["🥇", "🥈", "🥉"][rank]}</span>}
+                    <span>{p.avatar}</span>
+                    <span className="truncate max-w-[180px]">{p.name}</span>
+                  </span>
+                  <span className="font-display text-lg">
+                    <AnimatedScore from={previousScores[p.id] ?? p.score} to={p.score} />
+                  </span>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </ul>
+        </Card>
+      </motion.div>
 
       {isHost && (
         <div className="flex flex-col items-center gap-2">
@@ -1586,6 +1637,29 @@ function RoundResults({ candidates, votes, players, biases, assignments, prevote
       )}
     </div>
   );
+}
+
+function AnimatedScore({ from, to }: { from: number; to: number }) {
+  const [displayValue, setDisplayValue] = useState(from);
+
+  useEffect(() => {
+    if (from === to) {
+      setDisplayValue(to);
+      return;
+    }
+    const durationMs = 700;
+    const startTime = performance.now();
+    let frame: number;
+    const tick = (now: number) => {
+      const progress = Math.min((now - startTime) / durationMs, 1);
+      setDisplayValue(Math.round(from + (to - from) * progress));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [from, to]);
+
+  return <>{displayValue}</>;
 }
 
 // ===== Final Results =====
