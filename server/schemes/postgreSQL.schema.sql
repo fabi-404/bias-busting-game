@@ -254,16 +254,16 @@ INSERT INTO biases (slug, name, short_description, knowledge_card_text, example,
  'Eine Bewerberin hat in Harvard studiert. Du gehst automatisch davon aus, dass sie auch in Soft Skills, Führung und Kreativität herausragend ist.',
  '#f59e0b',
  'Bewerte Kandidat:innen zunächst dimensionsweise – Fachkompetenz, Kommunikation, Führungspotenzial getrennt – bevor du ein Gesamturteil bildest. Balzer & Sulsky (1992) zeigten, dass diese Methode der getrennten Dimensionsbewertung den Halo-Effekt bei Leistungsbeurteilungen nachweislich reduziert. Frage dich konkret: Welchen eigenständigen Beleg habe ich für jede dieser Eigenschaften – unabhängig von meinem Gesamteindruck dieser Person?',
- 'Thorndike (1920) · Nisbett & Wilson (1977) · Hosoda et al. (2003, Journal of Vocational Behavior)',
- 'https://doi.org/10.1006/jvbe.2002.1994'),
+ 'Thorndike (1920) · Nisbett & Wilson (1977) · Hosoda et al. (2003, Personnel Psychology)',
+ 'https://doi.org/10.1111/j.1744-6570.2003.tb00157.x'),
 
 ('confirmation', 'Confirmation Bias', 'Du suchst Bestätigung für das, was du schon glaubst.',
  'Der Bestätigungsfehler (Wason, 1960; Nickerson, 1998) bezeichnet die Neigung, Informationen so zu suchen, zu deuten und zu erinnern, dass sie bestehende Überzeugungen bestätigen. Wason (1960) demonstrierte dies mit dem „2-4-6-Task": Versuchspersonen sollten eine Zahlenregel entdecken, testeten aber systematisch nur bestätigende – nie widerlegende – Hypothesen. Im Recruiting zeigt sich der Effekt besonders in der Gesprächsführung: Snyder & Swann (1978) belegten experimentell, dass Interviewer:innen gezielt Fragen stellen, die eine Ausgangshypothese bestätigen (z.B. „Introvertiert") – und damit das Ergebnis unabhängig vom Wahrheitsgehalt ihrer Annahme verzerren. Nickerson (1998) fasst in seiner Übersichtsarbeit zusammen: Bestätigungssuche ist eines der robustesten und ubiquitärsten Muster menschlichen Urteilens.',
  'Du hältst Bewerber X von Anfang an für den besten. Im Gespräch hörst du nur noch die Stärken — Schwächen interpretierst du als „nicht so schlimm".',
  '#3b82f6',
  'Formuliere aktiv die Gegenannahme: „Was würde ich von dieser Person erwarten zu sehen, wenn mein erster Eindruck falsch wäre?" Larrick (2004) identifiziert das explizite Suchen nach gegenläufiger Evidenz als wirksamste Einzelmaßnahme gegen Bestätigungsfehler. Konkret: Bitte jemanden im Team, gezielt Argumente gegen deinen Favoriten zu sammeln – die sogenannte „Devil''s Advocate"-Rolle.',
- 'Wason (1960, Quarterly Journal of Experimental Psychology) · Snyder & Swann (1978) · Nickerson (1998, Psychological Bulletin)',
- 'https://doi.org/10.1037/0033-2909.124.2.175'),
+ 'Wason (1960, Quarterly Journal of Experimental Psychology) · Snyder & Swann (1978) · Nickerson (1998, Review of General Psychology)',
+ 'https://doi.org/10.1037/1089-2680.2.2.175'),
 
 ('similarity', 'Ähnlichkeits-Bias', 'Wer dir ähnelt, gefällt dir besser.',
  'Der Similar-to-me-Bias (Byrne, 1971) bezeichnet die Tendenz, Personen zu bevorzugen, die uns in Hintergrund, Werten, Interessen oder Sprache ähneln. Byrnes Similarity-Attraction-Paradigma belegt: Je mehr gemeinsame Einstellungen, desto höher die interpersonale Anziehung – ein kulturübergreifend robuster Effekt. Im Recruiting hat Rivera (2012) in einer ethnografischen Studie bei drei Elite-Beratungsfirmen gezeigt, dass „Cultural Fit" in der Praxis häufig mit Lifestyle-Ähnlichkeit gleichgesetzt wird: Gemeinsame Hobbys, Sportarten und Freizeitaktivitäten schlugen Qualifikation und Leistungspotenzial in der finalen Kandidatenwahl. Turban & Jones (1988) konnten zeigen, dass Vorgesetzte ähnlichen Untergebenen systematisch bessere Bewertungen gaben – selbst bei kontrollierter objektiver Leistung.',
@@ -279,7 +279,7 @@ INSERT INTO biases (slug, name, short_description, knowledge_card_text, example,
  '#ec4899',
  'Hinterfrage jede Charakterschlussfolgerung aktiv: „Welche situativen Faktoren könnten dieses Verhalten erklären, ohne dass es etwas über den Charakter dieser Person aussagt?" Levashina & Campion (2007) empfehlen behaviorale Interviewfragen mit explizitem Kontext: „Beschreiben Sie eine Situation, in der X passiert ist – welche Rahmenbedingungen lagen vor?" Dieser Ansatz zwingt Interviewer:innen, Situationsfaktoren aktiv zu erfassen, statt direkt auf Persönlichkeit zu schließen.',
  'Ross (1977, Advances in Experimental Social Psychology) · Jones & Harris (1967, Journal of Experimental Social Psychology) · Weisshaar (2018, American Sociological Review)',
- 'https://doi.org/10.1177/0003122417739558');
+ 'https://doi.org/10.1177/0003122417752355');
 
 -- ============================================================
 -- SEED: Bias-Fragen (3 pro Bias)
